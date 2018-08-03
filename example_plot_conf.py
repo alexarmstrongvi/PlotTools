@@ -1,4 +1,4 @@
-from PlotTools.hist import Plot1D, Plot2D, Types
+from PlotTools.plot import Plot1D, Plot2D, Types
 
 ################################################################################
 # Variables

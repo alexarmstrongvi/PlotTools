@@ -7,6 +7,11 @@ import ROOT
 ################################################################################
 SAMPLES = []
 
+# Luminosity options
+# Description | 2015-16 (ipb) |  2015-16 (ifb) | 2015 (ipb) | 2016 (ipb) | dummy
+# Value       |     36180     |      36.01     |    320     |    32971   |   1
+lumi = 36180
+
 MCsample.weight_str = 'eventweight'
 MCsample.scale_factor = lumi
 Sample.input_file_treename = 'superNt'

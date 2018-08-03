@@ -45,9 +45,9 @@ r.TLegend.__init__._creates = False
 r.THStack.__init__._creates = False
 
 # Local classes for plotting
-import tools.plot_utils as pu
-from tools.plot import Types
-from tools.YieldTable import UncFloat
+import PlotTools.plot_utils as pu
+from PlotTools.plot import Types
+from PlotTools.YieldTable import UncFloat
 from global_variables import event_list_dir, plots_dir
 
 ################################################################################

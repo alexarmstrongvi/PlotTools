@@ -25,9 +25,9 @@ ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ################################################################################
 import global_variables as g
 # Toggles
-run_fakes = True
+run_fakes = False
 add_truth_den = False
-add_truth_num = True
+add_truth_num = False
 run_den = False
 run_num = True
 
@@ -193,9 +193,9 @@ if run_den:
     #region_ops += ['zjets_FF_CRden_eee', 'zjets_FF_CRden_mme']
     region_ops += ['wjets_FF_VRden_emu']
 elif run_num:
-    #region_ops += ['wzCR']
+    region_ops += ['wzCR']
     #region_ops += ['zjets_FF_CRnum_m']
-    region_ops += ['zjets_FF_CRnum_m', 'zjets_FF_CRnum_e']
+    #region_ops += ['zjets_FF_CRnum_m', 'zjets_FF_CRnum_e']
     #region_ops += ['zjets_FF_CRnum_eem', 'zjets_FF_CRnum_mmm']
     #region_ops += ['zjets_FF_CRnum_eee', 'zjets_FF_CRnum_mme']
     #region_ops += ['wjets_FF_VRnum_emu'] #, 'wjets_FF_VRnum_mue'
