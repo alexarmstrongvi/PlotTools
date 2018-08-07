@@ -47,8 +47,8 @@ class PlotBase(object):
     output_format = 'pdf'
     def __init__(self):
         pass
-    def save_plot(self, can):
-        save_name = self.name + "." + self.output_format
+    def save_plot(self, can, suffix = ""):
+        save_name = self.name + suffix + "." + self.output_format
         save_path = os.path.join(self.save_dir, save_name)
         save_path = os.path.normpath(save_path)
         can.SaveAs(save_path)
@@ -389,7 +389,7 @@ class Plot1D(PlotBase) :
         print "Plot1D    plot: %s  (region: %s  var: %s)"%(
             self.name, self.region, self.variable)
 
-class Plot2D :
+class Plot2D(PlotBase) :
     xmin = 0
     xmax = 50.0
     ymin = 0
@@ -573,6 +573,55 @@ class Plot2D :
         self.pads = Pads(name)
         self.ptype = Types.profile
 
+    def make_2d_hist(self, hists, suffix = ""):
+        # Get canvas
+        can = self.pads.canvas
+        can.cd()
+        if self.doLogZ : can.SetLogz(True)
+        can.SetLeftMargin(0.15)
+        can.SetBottomMargin(0.15)
+        can.SetRightMargin(0.2)
+
+        # Formatting
+        for self.hist, suffix in [(mc_plot,'mc'), (data_plot,'data'), (sig_plot,'signal')]:
+            if self.doNorm:
+                pu.normalize_plot(self.hist)
+            if self.auto_set_zlimits:
+                reformat_zaxis(self.hist)
+            hists.axis.Draw()
+            self.hist.Draw("%s SAME" % self.style)
+
+            can.RedrawAxis()
+            can.SetTickx()
+            can.SetTicky()
+            can.Update()
+
+            save_plot(can, suffix)
+            # self.pads.canvas.Clear()
+
+    def reformat_zaxis(self):
+        # Get maximum histogram z-value
+        maxz = self.hist.GetMaximum()
+        minz = self.hist.GetMinimum()
+        assert maxz > 0
+
+        # Get default z-axis max and min limits
+        if self.doLogZ:
+            maxz = 10**(pu.get_order_of_mag(maxz))
+            if minz > 0:
+                minz = 10**(pu.get_order_of_mag(minz))
+            else:
+                minz = 10**(pu.get_order_of_mag(maxz) - 7)
+        else:
+            minz = 0
+
+        # Get z-axis max multiplier to fit labels
+
+        # reformat the axis
+        self.hist.SetMaximum(maxz)
+        self.hist.SetMinimum(minz)
+
+
     def Print(self) :
         print "Plot2D    plot: %s  (region: %s  xVar: %s  yVar: %s)"%(
             self.name, self.region, self.xVariable, self.yVariable)
@@ -627,8 +676,6 @@ def determine_nbins(ax_max, ax_min, bin_width, variable = "?", update_range = Tr
     nbins = int(round( ax_range / bin_width ))
 
     return nbins
-
-
 
 ################################################################################
 # TPad handler classes

@@ -23,7 +23,11 @@ ROOT.THStack.__init__._creates = False
 # many can probably be removed
 
 def get_order_of_mag(num):
-    return int(log10(num)) 
+    return int(log10(num))
+
+def normalize_plot(hist):
+    if hist and hist.Integral():
+        hist.Scale(1.0/hist.Integral())
 
 # ----------------------------------------------
 #  TH1D Methods
@@ -56,7 +60,7 @@ def th1d(name, title, nbin, nlow, nhigh, xtitle, ytitle) :
     return h
 
 def get_tgraph_y_values(tgraph):
-    ''' 
+    '''
         Get the y-values stored in a TGraph
 
         One cannot loop over TGraph.GetY() as it causes a crash
@@ -67,28 +71,28 @@ def get_tgraph_y_values(tgraph):
     return y_values
 
 def get_tgraph_max(tgraph):
-    ''' 
+    '''
     Getting maximum y-value of TGraph because doesn't make things easy
-    
+
     TGraphs cannot calculate their own maximum for reasons discuessed here:
         https://root-forum.cern.ch/t/tgraph-getmaximum-getminimum/8867
 
     '''
     maxy = tgraph.GetMaximum()
     if maxy == -1111: #default
-        maxy = max(get_tgraph_y_values(tgraph)) 
+        maxy = max(get_tgraph_y_values(tgraph))
     return maxy
 
 def get_tgraph_min(tgraph):
-    ''' 
+    '''
     Getting minimum y-value of TGraph because doesn't make things easy
-    
+
     TGraphs cannot calculate their own minimum for reasons discuessed here:
         https://root-forum.cern.ch/t/tgraph-getmaximum-getminimum/8867
     '''
     miny = tgraph.GetMinimum()
     if miny == -1111: #default
-        miny = min(get_tgraph_y_values(tgraph)) 
+        miny = min(get_tgraph_y_values(tgraph))
     return miny
 
 
@@ -193,9 +197,9 @@ def tgraphErrors_divide(g1, g2) :
                 if y1 > 0 : dy1 = g1.GetErrorY(i1)/y1
                 if y2 > 0 : dy2 = g2.GetErrorY(i2)/y2
 
-                if y1 <= 0. or y2 <= 0 : 
+                if y1 <= 0. or y2 <= 0 :
                     g3.SetPoint(iv, x1, -10) # if the ratio is zero, don't draw point at zero (looks bad on ratio pad)
-                else: 
+                else:
                     g3.SetPoint(iv, x1, y1/y2)
 
             e = ROOT.Double(0.0)
@@ -234,7 +238,7 @@ def tgraphAsymmErrors_divide(g_num, g_den) :
             g_den.GetPoint(iden, x_den, y_den)
 
             if x_num != x_den : continue
-            
+
             if y_num >0 :
                 ey_num_up = g_num.GetErrorYhigh(inum)/y_num
                 ey_num_dn = g_num.GetErrorYlow(inum)/y_num
@@ -242,7 +246,7 @@ def tgraphAsymmErrors_divide(g_num, g_den) :
                 ey_den_up = g_den.GetErrorYhigh(iden)/y_den
                 ey_den_dn = g_den.GetErrorYlow(iden)/y_den
 
-            if y_num <= 0. or y_den <= 0.: 
+            if y_num <= 0. or y_den <= 0.:
                 g3.SetPoint(iv, x_num, -10)
             else:
                 g3.SetPoint(iv, x_num, y_num/y_den)
@@ -443,7 +447,7 @@ def scale_thstack(stack, scale_factor):
     for hist in stack.GetHists():
         hist.Scale(scale_factor)
     stack.Modified()
-    
+
 def scale_tgraph(tgraph, scale_factor):
     for ii in range(tgraph.GetN()):
         if isnan(tgraph.GetY()[ii]): continue

@@ -122,160 +122,18 @@ def make_plots1D(plot, reg) :
         print "ERROR :: Unknown plot type,", plot.ptype.name
 
 def make_plots2D(plot, reg):
-    #with hist.Hist2D(plot, reg, data) as main_hist:
-    #    plot.make_2d_hist(main_hist):
-
-    # Get canvas
-    can = plot.pads.canvas
-    can.cd()
-    if plot.doLogZ : can.SetLogz(True)
-    can.SetLeftMargin(0.15)
-    can.SetBottomMargin(0.15)
-    can.SetRightMargin(0.2)
-
-    # Get plot primitive
-    axis = make_2D_axis(plot)
-
+    #TODO Move combined samples to sample conf file
     mc_samples = [s for s in SAMPLES if s.isMC and not s.isSignal]
     data_samples = [s for s in SAMPLES if not s.isMC]
     signal_samples = [s for s in SAMPLES if s.isMC and s.isSignal]
 
-    mc_plot = make_2D_plot(plot, reg, mc_samples) if mc_samples else None
-    data_plot = make_2D_plot(plot, reg, data_samples) if data_samples else None
-    sig_plot = make_2D_plot(plot, reg, signal_samples) if signal_samples else None
+    with hist.Hist2D(plot, reg, data_samples) as main_hist:
+        plot.make_2d_hist(main_hist, suffix = "_data")
+    with hist.Hist2D(plot, reg, mc_samples) as main_hist:
+        plot.make_2d_hist(main_hist, suffix = "_mc")
+    with hist.Hist2D(plot, reg, signal_samples) as main_hist:
+        plot.make_2d_hist(main_hist, suffix = "_signal")
 
-    # Formatting
-    for h, suffix in [(mc_plot,'mc'), (data_plot,'data'), (sig_plot,'signal')]:
-        if not h: continue
-        if plot.doNorm:
-            normalize_plot(h)
-        if plot.auto_set_zlimits:
-            reformat_zaxis(plot, h)
-        axis.Draw()
-        h.Draw("%s SAME" % plot.style)
-
-        can.RedrawAxis()
-        can.SetTickx()
-        can.SetTicky()
-        can.Update()
-
-        save_plot(can, plot.name+"_"+suffix+".pdf")
-        plot.pads.canvas.Clear()
-    root_delete([axis, mc_plot, data_plot, sig_plot])
-
-def make_2D_plot(plot, reg, samples):
-    h = r.TH2D(plot.name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
-    for sample in samples:
-
-        x_var = re.sub(r'[(){}[\]]+','',plot.xvariable)
-        y_var = re.sub(r'[(){}[\]]+','',plot.yvariable)
-        h_name_tmp = "h_"+reg.name+'_'+sample.name+"_"+x_var+"_"+y_var
-        h_tmp = r.TH2D(h_name_tmp, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
-        # Draw final histogram (i.e. selections and weights applied)
-
-
-        if not sample.isMC:
-            weight_str = '1'
-        elif plot.xvariable != sample.weight_str and plot.yvariable != sample.weight_str:
-            weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
-        else:
-            weight_str = '1'
-        draw_cmd = "%s>>%s"%(plot.yvariable+":"+plot.xvariable, h_tmp.GetName())
-        sample.tree.Draw(draw_cmd, weight_str, "goff")
-
-        # Yield +/- stat error
-        stat_err = r.Double(0.0)
-        integral = h_tmp.IntegralAndError(0,-1,0,-1,stat_err)
-        if sample.isMC and sample.isSignal:
-            YIELD_TBL.signals[sample.name] = UncFloat(integral, stat_err)
-        elif sample.isMC and not sample.isSignal:
-            YIELD_TBL.mc[sample.name] = UncFloat(integral, stat_err)
-        elif not sample.isMC:
-            YIELD_TBL.data[sample.name] = UncFloat(integral, stat_err)
-
-        h.Add(h_tmp)
-
-    zax = h.GetZaxis()
-    zax.SetTitle(plot.zlabel)
-    zax.SetTitleFont(42)
-    zax.SetLabelFont(42)
-    zax.SetTitleOffset(1.5)
-    zax.SetLabelOffset(0.013)
-    zax.SetLabelSize(1.2 * 0.035)
-    return h
-
-def normalize_plot(hist):
-    if hist and hist.Integral():
-        hist.Scale(1.0/hist.Integral())
-
-def reformat_zaxis(plot, h):
-    # Get maximum histogram z-value
-    maxz = h.GetMaximum()
-    minz = h.GetMinimum()
-    assert maxz > 0
-
-    # Get default z-axis max and min limits
-    if plot.doLogZ:
-        maxz = 10**(pu.get_order_of_mag(maxz))
-        if minz > 0:
-            minz = 10**(pu.get_order_of_mag(minz))
-        else:
-            minz = 10**(pu.get_order_of_mag(maxz) - 7)
-    else:
-        minz = 0
-
-    # Get z-axis max multiplier to fit labels
-
-    # reformat the axis
-    h.SetMaximum(maxz)
-    h.SetMinimum(minz)
-
-def make_2D_axis(plot):
-    hax = r.TH2D("axes", "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
-    hax.SetMinimum(plot.zmin)
-    hax.SetMaximum(plot.zmax)
-
-    xax = hax.GetXaxis()
-    xax.SetTitle(plot.xlabel)
-    xax.SetTitleFont(42)
-    xax.SetLabelFont(42)
-    xax.SetLabelSize(0.035)
-    xax.SetTitleSize(0.048 * 0.85)
-    xax.SetLabelOffset(1.15 * 0.02)
-    xax.SetTitleOffset(1.5 * xax.GetTitleOffset())
-
-    #if plot.bin_labels:
-    #    plot.set_bin_labels(hax)
-
-    yax = hax.GetYaxis()
-    yax.SetTitle(plot.ylabel)
-    yax.SetTitleFont(42)
-    yax.SetLabelFont(42)
-    yax.SetTitleOffset(1.4)
-    yax.SetLabelOffset(0.013)
-    yax.SetLabelSize(1.2 * 0.035)
-    yax.SetTitleSize(0.055 * 0.85)
-
-    zax = hax.GetZaxis()
-    zax.SetTitle(plot.zlabel)
-    #zax.SetTitleFont(42)
-    #zax.SetLabelFont(42)
-    #zax.SetTitleOffset(1.4)
-    #zax.SetLabelOffset(0.013)
-    #zax.SetLabelSize(1.2 * 0.035)
-    #zax.SetTitleSize(0.055 * 0.85)
-
-    #if plot.bin_labels:
-    #    plot.set_ybin_labels(hax)
-
-    #if plot.rebin_xbins:
-    #    new_bins = array('d', plot.rebin_xbins)
-    #    hax = hax.RebinX(len(new_bins)-1, 'axes', new_bins)
-    #if plot.rebin_ybins:
-    #    new_bins = array('d', plot.rebin_ybins)
-    #    hax = hax.RebinY(len(new_bins)-1, 'axes', new_bins)
-
-    return hax
 ################################################################################
 def make_plotsStack(plot, reg):
     ''' '''
@@ -300,13 +158,6 @@ def make_plotsRatio(plot, reg) :
     with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=backgrounds, sig=signals) as main_hist:
         with Hist.DataMCRatioHist1D(plot, reg, main_hist) as ratio_hist:
             plot.make_data_mc_stack_with_ratio_plot(reg.displayname, main_hist, ratio_hist)
-
-def save_plot(can, outname):
-    save_path = os.path.join(plots_dir, args.outdir, outname)
-    save_path = os.path.normpath(save_path)
-    can.SaveAs(save_path)
-    #OFILE.cd()
-    #can.Write()
 
 ################################################################################
 # SETUP FUNCTIONS

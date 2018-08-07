@@ -20,7 +20,7 @@ from PlotTools.YieldTable import UncFloat
 import PlotTools.plot_utils as pu
 
 #TODOs
-# Move style stuff to ATLAS style files and import
+# Move style stuff to ATLAS style files or plot.py and import
 
 class HistBase:
     '''
@@ -486,6 +486,7 @@ class DataMCStackHist1D(HistBase):
         self.mc_stack.SetMinimum(miny)
         self.axis.SetMaximum(max_mult*maxy)
         self.axis.SetMinimum(miny)
+
     def arrange_histos_for_legend(self, histos) :
         '''
         rearrange histogram list for legend
@@ -518,6 +519,95 @@ class ComparisonHist1D :
     def __init__(self):
         pass
 
-class Hist2D :
-    def __init__(self):
-        pass
+class Hist2D(HistBase) :
+    def __init__(self, plot, reg, samples):
+        #TODO: make simplest class take a single sample
+        # and add derived class that takes lists of samples to add them
+        # or write function that
+        self.make_axis(plot)
+        self.make_hist(plot, reg)
+
+    def make_axis(self, plot):
+        self.axis = r.TH2D("axes", "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
+        self.axis.SetMinimum(plot.zmin)
+        self.axis.SetMaximum(plot.zmax)
+
+        xax = self.axis.GetXaxis()
+        xax.SetTitle(plot.xlabel)
+        xax.SetTitleFont(42)
+        xax.SetLabelFont(42)
+        xax.SetLabelSize(0.035)
+        xax.SetTitleSize(0.048 * 0.85)
+        xax.SetLabelOffset(1.15 * 0.02)
+        xax.SetTitleOffset(1.5 * xax.GetTitleOffset())
+
+        #if plot.bin_labels:
+        #    plot.set_bin_labels(self.axis)
+
+        yax = self.axis.GetYaxis()
+        yax.SetTitle(plot.ylabel)
+        yax.SetTitleFont(42)
+        yax.SetLabelFont(42)
+        yax.SetTitleOffset(1.4)
+        yax.SetLabelOffset(0.013)
+        yax.SetLabelSize(1.2 * 0.035)
+        yax.SetTitleSize(0.055 * 0.85)
+
+        zax = self.axis.GetZaxis()
+        zax.SetTitle(plot.zlabel)
+        #zax.SetTitleFont(42)
+        #zax.SetLabelFont(42)
+        #zax.SetTitleOffset(1.4)
+        #zax.SetLabelOffset(0.013)
+        #zax.SetLabelSize(1.2 * 0.035)
+        #zax.SetTitleSize(0.055 * 0.85)
+
+        #if plot.bin_labels:
+        #    plot.set_ybin_labels(self.axis)
+
+        #if plot.rebin_xbins:
+        #    new_bins = array('d', plot.rebin_xbins)
+        #    self.axis = self.axis.RebinX(len(new_bins)-1, 'axes', new_bins)
+        #if plot.rebin_ybins:
+        #    new_bins = array('d', plot.rebin_ybins)
+        #    self.axis = self.axis.RebinY(len(new_bins)-1, 'axes', new_bins)
+
+    def make_hist(self, plot, reg):
+        self.hist = r.TH2D(plot.name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
+        for sample in samples:
+
+            x_var = re.sub(r'[(){}[\]]+','',plot.xvariable)
+            y_var = re.sub(r'[(){}[\]]+','',plot.yvariable)
+            h_name_tmp = "h_"+reg.name+'_'+sample.name+"_"+x_var+"_"+y_var
+            h_tmp = r.TH2D(h_name_tmp, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
+            # Draw final histogram (i.e. selections and weights applied)
+
+
+            if not sample.isMC:
+                weight_str = '1'
+            elif plot.xvariable != sample.weight_str and plot.yvariable != sample.weight_str:
+                weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
+            else:
+                weight_str = '1'
+            draw_cmd = "%s>>%s"%(plot.yvariable+":"+plot.xvariable, h_tmp.GetName())
+            sample.tree.Draw(draw_cmd, weight_str, "goff")
+
+            # Yield +/- stat error
+            stat_err = r.Double(0.0)
+            integral = h_tmp.IntegralAndError(0,-1,0,-1,stat_err)
+            if sample.isMC and sample.isSignal:
+                YIELD_TBL.signals[sample.name] = UncFloat(integral, stat_err)
+            elif sample.isMC and not sample.isSignal:
+                YIELD_TBL.mc[sample.name] = UncFloat(integral, stat_err)
+            elif not sample.isMC:
+                YIELD_TBL.data[sample.name] = UncFloat(integral, stat_err)
+
+            self.hist.Add(h_tmp)
+
+        zax = self.hist.GetZaxis()
+        zax.SetTitle(plot.zlabel)
+        zax.SetTitleFont(42)
+        zax.SetLabelFont(42)
+        zax.SetTitleOffset(1.5)
+        zax.SetLabelOffset(0.013)
+        zax.SetLabelSize(1.2 * 0.035)
