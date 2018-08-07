@@ -47,6 +47,7 @@ r.THStack.__init__._creates = False
 # Local classes for plotting
 import PlotTools.plot_utils as pu
 from PlotTools.plot import Types
+import PlotTools.hist as Hist
 from PlotTools.YieldTable import UncFloat
 from global_variables import event_list_dir, plots_dir
 
@@ -55,18 +56,6 @@ def main ():
     """ Main Function """
 
     global args
-    # Slim plots to make if requested
-    rReg = args.requestRegion
-    rPlot = args.requestPlot
-    if not rReg and not rPlot:
-        pass # Use all plots
-    elif rReg and not rPlot:
-        PLOTS = [p for p in PLOTS if p.region == rReg]
-    elif not rReg and rPlot:
-        PLOTS = [p for p in PLOTS if p.name == rPlot]
-    elif rReg and rPlot:
-        PLOTS = [p for p in PLOTS if p.name == rPlot and p.region == rReg]
-
     make_plots()
 
     print "Yields found during plotting...\n"
@@ -287,44 +276,27 @@ def make_2D_axis(plot):
 ################################################################################
 def make_plotsStack(plot, reg):
     ''' '''
-    # Get Canvas
-    can = plot.pads.canvas
-    can.cd()
-    if plot.doLogY : can.SetLogy(True)
+    backgrounds = [s for s in SAMPLES if s.isMC and not s.isSignal]
+    data = [s for s in SAMPLES if not s.isMC][0]
+    signals = [s for s in SAMPLES if s.isMC and s.isSignal]
+    with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=backgrounds, sig=signals) as main_hist:
+        plot.make_data_mc_stack_plot(reg.displayname, main_hist)
 
-    # Get plotting primitives
-    # Not all primitives are for drawing. Some are for preserving pointers
-    legend = make_stack_legend(plot)
-    axis = make_stack_axis(plot)
-    mc_stack, mc_total, signals, hists = add_stack_backgrounds(plot, reg)
-    data, data_hist = add_stack_data(plot, legend, reg)
-    error_leg, mc_errors = add_stack_mc_errors(plot, legend, hists, mc_stack)
-    if plot.doNorm:
-        normalize_stack(mc_total, signals, data_hist, data, mc_stack, mc_errors)
-    if plot.auto_set_ylimits:
-        reformat_axis(plot, legend, mc_stack, data, axis, signals)
+    #with hist.DataMCStackHist1D(plot, reg, data=data, bkgds=backgrounds, sig=signals) as main_hist:
+    #    with hist.DataMCRatioHist1D(plot, reg, num=data, den=backgrounds) as ratio_hist:
+    #        ratio_hist.num_label = "Data"
+    #        ratio_hist.den_label = "MC"
+    #        plot.make_data_mc_stack_with_ratio_plot(main_hist, ratio_hist)
 
-    # Checks - Move on to next plot in case of failure
-    if not mc_stack:
-        print "WARNING :: Stack plot has either no MC. Skipping."
-        return
+    #with hist.Hist2D(plot, reg, data) as main_hist:
+    #    plot.make_2d_hist(main_hist):
 
+    ## For fake factor histograms
+    #with hist.DataCorrMCRealStackHist1D(plot, reg, data=data, data_corr=bkgds, bkgds=backgrounds) as main_hist:
+    #    plot.make_fake_datacorr_mctruth_stack_plot(main_hist)
 
-    # Draw the histograms
-    draw_stack(axis, mc_stack, mc_errors, mc_total, signals, data, legend, reg.displayname, plot.doNorm)
-
-    # Reset axis
-    can.RedrawAxis()
-    can.SetTickx()
-    can.SetTicky()
-    can.Update()
-
-    # Save the histogram
-    save_plot(can, plot.name+".pdf")
-
-    # Clean up
-    root_delete([axis, mc_stack, mc_errors, mc_total, error_leg, signals, data, data_hist, legend, hists])
-    plot.pads.canvas.Clear()
+    #with hist.FakeFactor1D(plot, reg, ata_num, data_den, mc_num, mc_den) as main_hist:
+    #    plot.make_fake_factor_plot(main_hist)
 
 def make_plotsRatio(plot, reg) :
     ''' '''
@@ -858,8 +830,6 @@ def print_inputs(args):
     print ""
     print " Options:"
     print "     plot config      :  %s "%args.plotConfig
-    print "     specific plot    :  %s "%args.requestPlot
-    print "     specific region  :  %s "%args.requestRegion
     print "     output directory :  %s "%args.outdir
     print "     verbose          :  %s "%args.verbose
     print ""
@@ -911,12 +881,6 @@ if __name__ == '__main__':
         parser.add_argument("-c", "--plotConfig",
                                 default="",
                                 help='name of the config file')
-        parser.add_argument("-r", "--requestRegion",
-                                default="",
-                                help='request a region to plot -- will make all plots in the config that are in this region')
-        parser.add_argument("-p", "--requestPlot",
-                                default="",
-                                help='request a specific plot -- provide the name of the plot')
         parser.add_argument("-o", "--outdir",
                                 default="./",
                                 help='name of the output directory to save plots.')

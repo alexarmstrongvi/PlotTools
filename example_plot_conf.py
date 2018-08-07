@@ -1,10 +1,11 @@
-from PlotTools.plot import Plot1D, Plot2D, Types
+from PlotTools.plot import PlotBase, Plot1D, Plot2D, Types
 
 ################################################################################
 # Variables
 # - Create all the variables that one might like to plot
 ################################################################################
 
+PlotBase.output_format = 'pdf'
 # Improved plot defining setup
 # These plots will be copied into new plots for each region being run
 plot_defaults = {

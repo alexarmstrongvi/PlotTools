@@ -233,12 +233,13 @@ YIELD_TBL.formulas['VV/sqrt(MC)'] = "vv/(MC**(0.5))"
 # What variables to plot
 # Strings for plotting
 from example_plot_conf import *
+PlotBase.save_dir = g.plots_dir
 Plot1D.auto_set_ylimits = True
 Plot1D.doLogY = False
 Plot2D.doLogZ = False
 Plot2D.auto_set_zlimits = False
 
-vars_to_plot = ['isMC','l_pt[0]']
+vars_to_plot = ['isMC']#,'l_pt[0]']
 
 # Remove duplicate names
 vars_to_plot = list(set(vars_to_plot))

@@ -12,7 +12,7 @@ License:
 ================================================================================
 """
 # General python
-import sys
+import os, sys
 import glob
 import re
 from math import floor
@@ -22,6 +22,8 @@ from collections import OrderedDict
 # Root data analysis framework
 import ROOT as r
 r.TCanvas.__init__._creates = False
+
+import PlotTools.plot_utils as pu
 
 ################################################################################
 # Enumerating plot types
@@ -40,7 +42,18 @@ class Types(Enum):
 ################################################################################
 # TODO add some generic functions to plot utils
 
-class Plot1D(object) :
+class PlotBase(object):
+    save_dir = './'
+    output_format = 'pdf'
+    def __init__(self):
+        pass
+    def save_plot(self, can):
+        save_name = self.name + "." + self.output_format
+        save_path = os.path.join(self.save_dir, save_name)
+        save_path = os.path.normpath(save_path)
+        can.SaveAs(save_path)
+
+class Plot1D(PlotBase) :
 
     # Class defaults for axis range depending on log and normalization settings
     xmin = 0
@@ -59,6 +72,7 @@ class Plot1D(object) :
 
     auto_set_ylimits = True
     doLogY = True
+
 
     def __init__(self,
         region = "",
@@ -292,6 +306,40 @@ class Plot1D(object) :
     def setDoubleRatioPads(self, name) :
         self.pads = DoubleRatioPads(name)
         self.ptype = Types.double_ratio
+
+    def make_data_mc_stack_plot(self, reg_name, hists):
+        # Get Canvas
+        can = self.pads.canvas
+        can.cd()
+        if self.doLogY : can.SetLogy(True)
+
+        # Checks - Move on to next plot in case of failure
+        if not hists.mc_stack:
+            print "WARNING :: Stack plot has either no MC. Skipping."
+            return
+
+        # Draw the histograms
+        hists.axis.Draw()
+        hists.mc_stack.Draw("HIST SAME")
+        hists.mc_errors.Draw("E2 same")
+        hists.mc_total.Draw('hist same')
+        for hsig in hists.signals: hsig.Draw("hist same")
+        if hists.data: hists.data.Draw("option same pz 0")
+        hists.leg.Draw()
+        pu.draw_atlas_label('Internal','Higgs LFV', reg_name)
+
+        # Reset axis
+        can.RedrawAxis()
+        can.SetTickx()
+        can.SetTicky()
+        can.Update()
+
+        # Save the histogram
+
+        self.save_plot(can)
+
+        # Clean up
+        #plot.pads.canvas.Clear() #TODO: Figure out when to clear canvas (do I need to)
 
     def Print(self) :
         print "Plot1D    plot: %s  (region: %s  var: %s)"%(
@@ -535,6 +583,8 @@ def determine_nbins(ax_max, ax_min, bin_width, variable = "?", update_range = Tr
     nbins = int(round( ax_range / bin_width ))
 
     return nbins
+
+
 
 ################################################################################
 # TPad handler classes
