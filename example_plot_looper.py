@@ -127,11 +127,11 @@ def make_plots2D(plot, reg):
     data_samples = [s for s in SAMPLES if not s.isMC]
     signal_samples = [s for s in SAMPLES if s.isMC and s.isSignal]
 
-    with hist.Hist2D(plot, reg, data_samples) as main_hist:
+    with Hist.Hist2D(plot, reg, YIELD_TBL, data_samples) as main_hist:
         plot.make_2d_hist(main_hist, suffix = "_data")
-    with hist.Hist2D(plot, reg, mc_samples) as main_hist:
+    with Hist.Hist2D(plot, reg, YIELD_TBL, mc_samples) as main_hist:
         plot.make_2d_hist(main_hist, suffix = "_mc")
-    with hist.Hist2D(plot, reg, signal_samples) as main_hist:
+    with Hist.Hist2D(plot, reg, YIELD_TBL, signal_samples) as main_hist:
         plot.make_2d_hist(main_hist, suffix = "_signal")
 
 ################################################################################

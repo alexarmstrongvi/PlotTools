@@ -574,6 +574,7 @@ class Plot2D(PlotBase) :
         self.ptype = Types.profile
 
     def make_2d_hist(self, hists, suffix = ""):
+        if not hists.hist: return
         # Get canvas
         can = self.pads.canvas
         can.cd()
@@ -583,21 +584,20 @@ class Plot2D(PlotBase) :
         can.SetRightMargin(0.2)
 
         # Formatting
-        for self.hist, suffix in [(mc_plot,'mc'), (data_plot,'data'), (sig_plot,'signal')]:
-            if self.doNorm:
-                pu.normalize_plot(self.hist)
-            if self.auto_set_zlimits:
-                reformat_zaxis(self.hist)
-            hists.axis.Draw()
-            self.hist.Draw("%s SAME" % self.style)
+        if self.doNorm:
+            pu.normalize_plot(self.hist)
+        if self.auto_set_zlimits:
+            reformat_zaxis(self.hist)
+        hists.axis.Draw()
+        hists.hist.Draw("%s SAME" % self.style)
 
-            can.RedrawAxis()
-            can.SetTickx()
-            can.SetTicky()
-            can.Update()
+        can.RedrawAxis()
+        can.SetTickx()
+        can.SetTicky()
+        can.Update()
 
-            save_plot(can, suffix)
-            # self.pads.canvas.Clear()
+        self.save_plot(can, suffix)
+        # self.pads.canvas.Clear()
 
     def reformat_zaxis(self):
         # Get maximum histogram z-value

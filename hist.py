@@ -34,7 +34,7 @@ class HistBase:
         return self
     def __exit__(self, exception_type, exception_value, traceback):
         self.clear()
-    def list_of_root_objects():
+    def list_of_root_objects(self):
         " Return list of all class members that are or contain root objects"
         #TODO: Get python to get all class variables that inherit fromTObject
         #      (e.g. use self.__class__.__dict__)
@@ -201,7 +201,6 @@ class DataMCStackHist1D(HistBase):
             self.reformat_axis(plot, reg)
 
     def list_of_root_objects(self):
-
         return [
             self.leg_sig,
             self.leg,
@@ -520,12 +519,19 @@ class ComparisonHist1D :
         pass
 
 class Hist2D(HistBase) :
-    def __init__(self, plot, reg, samples):
+    def __init__(self, plot, reg, YIELD_TBL, samples):
         #TODO: make simplest class take a single sample
         # and add derived class that takes lists of samples to add them
         # or write function that
+        # TODO: Remove YIELD_TBL
+        self.axis = None
+        self.hist = None
+        if not samples: return
         self.make_axis(plot)
-        self.make_hist(plot, reg)
+        self.make_hist(plot, reg, YIELD_TBL, samples)
+
+    def list_of_root_objects(self):
+        return [self.axis, self.hist]
 
     def make_axis(self, plot):
         self.axis = r.TH2D("axes", "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
@@ -572,7 +578,7 @@ class Hist2D(HistBase) :
         #    new_bins = array('d', plot.rebin_ybins)
         #    self.axis = self.axis.RebinY(len(new_bins)-1, 'axes', new_bins)
 
-    def make_hist(self, plot, reg):
+    def make_hist(self, plot, reg, YIELD_TBL, samples):
         self.hist = r.TH2D(plot.name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
         for sample in samples:
 
