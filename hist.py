@@ -19,6 +19,9 @@ from PlotTools.region import Region
 from PlotTools.YieldTable import UncFloat
 import PlotTools.plot_utils as pu
 
+#TODOs
+# Move style stuff to ATLAS style files and import
+
 class HistBase:
     '''
     All histogram classes should be created within 'with' statments so that
@@ -52,9 +55,122 @@ class HistBase:
             else:
                 print "ERROR :: Unknown primitive type", type(ro)
 
-class RatioHist1D :
+#TODO: Remover unused classes
+class StackHist1D(HistBase):
     def __init__(self):
         pass
+
+class RatioHist1D(HistBase) :
+    ratio_ymax = 2.0
+
+    def __init__(self, plot, reg, num, den):
+        self.ratio_label = 'Num / Den'
+        #self.get_ratio_axis(plot)
+        #self.get_ratio_errors(plot)
+        #self.get_ratio_graph(plot)
+
+    def list_of_root_objects(self):
+        return [
+            self.axis,
+            self.errors,
+            self.ratio
+        ]
+
+class DataMCRatioHist1D(RatioHist1D) :
+    def __init__(self, plot, reg, stack_hist):
+        #TODO: take samples as input as opposed to stack hist
+        self.ratio_label = 'Data/MC'
+        self.get_ratio_axis(plot, stack_hist.mc_stack)
+        self.get_ratio_errors(stack_hist.mc_errors)
+        self.get_ratio_graph(stack_hist.data_hist, stack_hist.mc_errors)
+
+    def list_of_root_objects(self):
+        return [
+            self.axis,
+            self.errors,
+            self.ratio
+        ]
+
+    def get_ratio_axis(self, plot, stack):
+        # yaxis
+        self.axis = stack.GetStack().Last().Clone("h_sm")
+        h_sm = self.axis #TODO: remove relabel
+        yax = h_sm.GetYaxis()
+        yax.SetRangeUser(0, self.ratio_ymax)
+        yax.SetTitle(self.ratio_label)
+        yax.SetTitleSize(0.14 * 0.83)
+        yax.SetLabelSize(0.13 * 0.81)
+        yax.SetLabelOffset(0.98 * 0.013 * 1.08)
+        yax.SetTitleOffset(0.45 * 1.2)
+        yax.SetLabelFont(42)
+        yax.SetTitleFont(42)
+        yax.SetNdivisions(5)
+
+        # xaxis
+        xax = h_sm.GetXaxis()
+        xax.SetTitleSize(1.1 * 0.14)
+        xax.SetLabelSize(yax.GetLabelSize())
+        xax.SetLabelOffset(1.15*0.02)
+        xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
+        xax.SetLabelFont(42)
+        xax.SetTitleFont(42)
+
+        h_sm.SetTickLength(0.06)
+
+        if plot.bin_labels and plot.ptype == Types.ratio:
+            plot.set_bin_labels(h_sm)
+
+        #if plot.rebin_bins:
+        #    print "WARNING :: rebinning not yet implemented"
+        #    #TODO: Implement rebinning
+
+        return h_sm
+
+    def get_ratio_errors(self, mc_errors):
+        self.errors = r.TGraphAsymmErrors(mc_errors)
+        pu.buildRatioErrorBand(mc_errors, self.errors)
+
+    def get_ratio_graph(self, data_hist, mc_errors):
+        g_data = pu.convert_errors_to_poisson(data_hist)
+        #g_sm = pu.th1_to_tgraph(h_sm)
+        #g_ratio = pu.tgraphAsymmErrors_divide(g_data, g_sm)
+
+        # For Data/MC only use the statistical error for data
+        # since we explicity draw the MC error band
+        nominalAsymErrorsNoSys = r.TGraphAsymmErrors(mc_errors)
+        for i in xrange(nominalAsymErrorsNoSys.GetN()) :
+            nominalAsymErrorsNoSys.SetPointError(i-1,0,0,0,0)
+        ratio_raw = pu.tgraphAsymmErrors_divide(g_data, nominalAsymErrorsNoSys)
+        #ratio_raw = pu.tgraphAsymmErrors_divide(nominalAsymErrorsNoSys,g_data)
+
+        # Make final ratio plot
+        self.ratio = r.TGraphAsymmErrors()
+        x1, y1 = r.Double(0.0), r.Double(0.0)
+        index = 0
+        for i in xrange(ratio_raw.GetN()) :
+            ratio_raw.GetPoint(i, x1, y1)
+            if y1 <= 0. : y1 = r.Double(-2.0)
+
+            self.ratio.SetPoint(index, x1, y1)
+            xlo, xhi = ratio_raw.GetErrorXlow(i), ratio_raw.GetErrorXhigh(i)
+            ylo, yhi = ratio_raw.GetErrorYlow(i), ratio_raw.GetErrorYhigh(i)
+            self.ratio.SetPointError(index, xlo, xhi, ylo, yhi)
+            index+=1
+
+        # Format
+        #self.ratio.SetLineWidth(2)
+        #uglify
+        self.ratio.SetLineWidth(1)
+        self.ratio.SetMarkerStyle(20)
+        self.ratio.SetMarkerSize(1.5)
+        self.ratio.SetLineColor(1)
+        self.ratio.SetMarkerSize(1.5)
+
+        # Clean up
+        ratio_raw.Delete()
+        nominalAsymErrorsNoSys.Delete()
+        g_data.Delete()
+
 
 class DataMCStackHist1D(HistBase):
     def __init__(self, plot, reg, YIELD_TBL, data, bkgds, sig=None):
@@ -395,6 +511,8 @@ class DataMCStackHist1D(HistBase):
             return histos
 
         return [histos[idx] for idx in indices]
+
+
 
 class ComparisonHist1D :
     def __init__(self):

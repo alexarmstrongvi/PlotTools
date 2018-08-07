@@ -318,15 +318,7 @@ class Plot1D(PlotBase) :
             print "WARNING :: Stack plot has either no MC. Skipping."
             return
 
-        # Draw the histograms
-        hists.axis.Draw()
-        hists.mc_stack.Draw("HIST SAME")
-        hists.mc_errors.Draw("E2 same")
-        hists.mc_total.Draw('hist same')
-        for hsig in hists.signals: hsig.Draw("hist same")
-        if hists.data: hists.data.Draw("option same pz 0")
-        hists.leg.Draw()
-        pu.draw_atlas_label('Internal','Higgs LFV', reg_name)
+        self.draw_data_mc_stack_plot(reg_name, hists)
 
         # Reset axis
         can.RedrawAxis()
@@ -340,6 +332,58 @@ class Plot1D(PlotBase) :
 
         # Clean up
         #plot.pads.canvas.Clear() #TODO: Figure out when to clear canvas (do I need to)
+    def draw_data_mc_stack_plot(self, reg_name, hists):
+        ''' In a separate function so it can be used when making stack + ratio plots '''
+        # Draw the histograms
+        hists.axis.Draw()
+        hists.mc_stack.Draw("HIST SAME")
+        hists.mc_errors.Draw("E2 same")
+        hists.mc_total.Draw('hist same')
+        for hsig in hists.signals: hsig.Draw("hist same")
+        if hists.data: hists.data.Draw("option same pz 0")
+        hists.leg.Draw()
+        pu.draw_atlas_label('Internal','Higgs LFV', reg_name)
+
+    def make_data_mc_stack_with_ratio_plot(self, reg_name, stack_hists, ratio_hists):
+        # Pads
+        rcan = self.pads #remove relableing
+
+        ############################################################################
+        # Top stack plot
+        rcan.upper_pad.cd()
+        if self.doLogY : rcan.upper_pad.SetLogy(True)
+        rcan.upper_pad.Update()
+
+
+        # Draw the histograms
+        self.draw_data_mc_stack_plot(reg_name, stack_hists)
+
+        # Reset axis
+        rcan.upper_pad.RedrawAxis()
+        rcan.upper_pad.SetTicks()
+        rcan.upper_pad.Update()
+
+        ############################################################################
+        # Bottom ratio plot
+        rcan.lower_pad.cd()
+
+        ratio_hists.axis.Draw("AXIS")
+        ratio_hists.errors.Draw("E2")
+        ratio_hists.ratio.Draw("option same pz 0")
+
+        pu.draw_line(self.xmin, 1.5, self.xmax, 1.5, style = 3, width = 1)
+        pu.draw_line(self.xmin, 1.0, self.xmax, 1.0, style = 2, width = 1, color = r.kBlack)
+        pu.draw_line(self.xmin, 0.5, self.xmax, 0.5, style = 3, width = 1)
+
+        rcan.lower_pad.SetTicks()
+        rcan.lower_pad.Update()
+
+        ############################################################################
+        # Save the histogram
+        self.save_plot(rcan.canvas)
+
+        # Clean up
+        #self.pads.canvas.Clear() #TODO: check if this can be uncommented
 
     def Print(self) :
         print "Plot1D    plot: %s  (region: %s  var: %s)"%(

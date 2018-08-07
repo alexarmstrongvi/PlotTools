@@ -239,7 +239,7 @@ Plot1D.doLogY = False
 Plot2D.doLogZ = False
 Plot2D.auto_set_zlimits = False
 
-vars_to_plot = ['isMC']#,'l_pt[0]']
+vars_to_plot = ['isMC','l_pt[0]']
 
 # Remove duplicate names
 vars_to_plot = list(set(vars_to_plot))
