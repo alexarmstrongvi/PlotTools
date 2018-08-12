@@ -77,12 +77,18 @@ SAMPLES.append(top)
 # VV combined
 VV = Background("vv", "Diboson")
 VV.color = ROOT.kSpring-8
+VV.scale_factor *= 1.05
 SAMPLES.append(VV)
 
 # VVV combined
 VVV = Background("vvv", "Triboson")
 VVV.color = ROOT.kSpring-7
 SAMPLES.append(VVV)
+
+# Zee
+zll = Background("zll", "Z(->ll)+jets")
+zll.color = ROOT.kAzure-7
+SAMPLES.append(zll)
 
 # Zee
 zee = Background("zee", "Zee")

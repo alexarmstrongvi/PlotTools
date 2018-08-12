@@ -110,9 +110,8 @@ wz_cr_cut += ' && %s' % singlelep_trig_pT
 wz_cr_cut += ' && fabs(lep_d0sigBSCorr[0]) < 15 && fabs(lep_d0sigBSCorr[1]) < 15 && fabs(lep_d0sigBSCorr[2]) < 15'
 wz_cr_cut += ' && fabs(lep_z0SinTheta[0]) < 15 && fabs(lep_z0SinTheta[1]) < 15 && fabs(lep_z0SinTheta[2]) < 15'
 wz_cr_cut += " && 75 < Z_MLL && Z_MLL < 105"
-#wz_cr_cut += ' && nBJets == 0'
+wz_cr_cut += ' && nBJets == 0'
 wz_cr_cut += ' && l_mT[2] > 50'
-#wz_cr_cut += ' && (Z2_MLL < 80 || 110 < Z2_MLL)'
 REGIONS[-1].tcut = wz_cr_cut
 
 zll_cr_base = "1"

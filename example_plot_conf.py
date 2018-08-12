@@ -172,7 +172,7 @@ plot_defaults = {
     'aID_Lep1Flav'         : Plot1D( bin_range=[-1.5, 5.5],   bin_width=1, xlabel='Subleading antiID flavor'),
     'aID_Lep0Q'            : Plot1D( bin_range=[-1.5, 1.5],   bin_width=1, xlabel='Leading anti-ID charge'),
     'aID_Lep1Q'            : Plot1D( bin_range=[-1.5, 1.5],   bin_width=1, xlabel='Subleading anti-ID charge'),
-    'Z_MLL'                : Plot1D( bin_range=[65, 115.0],   bin_width=1, xunits='GeV', xlabel='M_{ll} (Z pair)'),
+    'Z_MLL'                : Plot1D( bin_range=[60, 120.0],   bin_width=1, xunits='GeV', xlabel='M_{ll} (Z pair)'),
     'Z2_MLL'               : Plot1D( bin_range=[0, 200.0],    bin_width=5, xunits='GeV', xlabel='M_{ll} (2nd Z pair)'),
     'aID_dpt_ll'           : Plot1D( bin_range=[0.0, 150.0],  nbins=20, xunits='GeV', xlabel='#Deltap_{T}^{ll}(ID, anti-ID)'),
     'aID_drll'             : Plot1D( bin_range=[0.0, 6.0],    nbins=60, xlabel='#DeltaR_{ll}(ID, anti-ID)'),
@@ -186,7 +186,7 @@ plot_defaults = {
     'Z_dilep_sign'         : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='Z Dilepton Sign : OS(-1) SS(1)'),
     'Z2_dilep_sign'        : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='2nd Z Dilepton Sign : OS(-1) SS(1)'),
     'Z_Lep2_dPhi_MET'      : Plot1D( bin_range=[-3.15, 3.15], nbins=63, add_underflow=True, xlabel='#Delta#phi(l_{3},MET)'),
-    'l_mT[2]'              : Plot1D( bin_range=[0.0, 300.0],  bin_width=10, xunits='GeV', xlabel='Lepton2 m_{T}'),
+    'l_mT[2]'              : Plot1D( bin_range=[0.0, 60.0],  bin_width=1, xunits='GeV', xlabel='Lepton2 m_{T}'),
     'l_mT[1]'              : Plot1D( bin_range=[0.0, 300.0],  bin_width=5, xunits='GeV', xlabel='Lepton1 m_{T}'),
     'l_mT[0]'              : Plot1D( bin_range=[0.0, 300.0],  bin_width=5, xunits='GeV', xlabel='Lepton0 m_{T}'),
     'dR_ZLep0_Fake'        : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR_{fake, Zlep0}'),
@@ -202,7 +202,8 @@ plot_defaults = {
 
     # 2D Plots (y:x)
     'DphiLepJetMET:RelMET' : Plot2D( bin_range=[0, 100, -0.1, 3.2], xbin_width = 4, ybin_width = 0.05, xunits='GeV',xlabel='E_{T,rel}^{miss}', ylabel='#Delta#phi(MET, closest lep/jet)'),
-    'l_pt[0]:l_pt[2]'      : Plot2D( bin_range=[0, 100, 0, 100], xbin_width = 5, ybin_width = 5, xunits='GeV', xlabel='Fake probe lepton p_{T}', yunits='GeV', ylabel='Leading lepton p_{T}')
+    'l_pt[0]:l_pt[2]'      : Plot2D( bin_range=[0, 100, 0, 100], xbin_width = 5, ybin_width = 5, xunits='GeV', xlabel='Fake probe lepton p_{T}', yunits='GeV', ylabel='Leading lepton p_{T}'),
+    'RelMET:nLJets'        : Plot2D( bin_range=[-0.5, 7.5, 0, 100], xbin_width = 1, ybin_width = 4, xlabel="Light Jet Multiplicity" , ylabel='E_{T,rel}^{miss}'), 
 }
 
 # Add any labels to the plots
@@ -225,7 +226,8 @@ plot_defaults['l_ID'].bin_labels = ['', 'tight', 'medium', 'looseBlayer','loose'
 
 
 #plot_defaults['l_mT[2]'].rebin_bins = [0,50,60,70,80,90,100,120,140,160,190,220,250,300]
-#plot_defaults['l_pt[2]'].rebin_bins = [0,10,11,15,20,25,35,100]
+plot_defaults['l_pt[2]'].rebin_bins = [0,10,11,15,20,25,35,150]
+plot_defaults['l_eta[2]'].rebin_bins = [-3.0, -2.5, -1.45, 0, 1.45, 2.5, 3.0]
 #plot_defaults['l_pt[1]'].rebin_bins = [0,10,11,12,13,14,15,17,20,25,35,100]
 #plot_defaults['l_pt[1]'].rebin_bins = [0,10,11,15,20,25,35,100]
 #plot_defaults['l_pt[1]'].rebin_bins = [0,10,15,20,25,30,35,100]

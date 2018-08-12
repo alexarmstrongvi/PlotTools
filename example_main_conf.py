@@ -25,9 +25,9 @@ ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ################################################################################
 import global_variables as g
 # Toggles
-run_fakes = False
+run_fakes = True
 add_truth_den = False
-add_truth_num = False
+add_truth_num = True
 run_den = False
 run_num = True
 
@@ -74,9 +74,9 @@ top.set_chain_from_dsid_list(g.groups['top'], bkg_ntuple_dir)
 ttbarlep.set_chain_from_dsid_list(g.groups['ttbar_lep'], bkg_ntuple_dir)
 VV.set_chain_from_dsid_list(g.groups['VV'], bkg_ntuple_dir)
 VVV.set_chain_from_dsid_list(g.groups['VVV'], bkg_ntuple_dir)
-#zll.set_chain_from_dsid_list(g.groups['zll'], bkg_ntuple_dir)
-zee.set_chain_from_dsid_list(g.groups['zee'], bkg_ntuple_dir)
-zmumu.set_chain_from_dsid_list(g.groups['zmumu'], bkg_ntuple_dir)
+zll.set_chain_from_dsid_list(g.groups['zll'], bkg_ntuple_dir)
+#zee.set_chain_from_dsid_list(g.groups['zee'], bkg_ntuple_dir)
+#zmumu.set_chain_from_dsid_list(g.groups['zmumu'], bkg_ntuple_dir)
 ztt.set_chain_from_dsid_list(g.groups['ztt'], bkg_ntuple_dir)
 wjets.set_chain_from_dsid_list(g.groups['wjets'], bkg_ntuple_dir)
 wgamma.set_chain_from_dsid_list(g.groups['wgamma'], bkg_ntuple_dir)
@@ -101,10 +101,12 @@ zjets_FF_CR += ' && %s'%singlelep_trig_pT
 zjets_FF_CR += ' && fabs(lep_d0sigBSCorr[0]) < 15 && fabs(lep_d0sigBSCorr[1]) < 15 && fabs(lep_d0sigBSCorr[2]) < 15'
 zjets_FF_CR += ' && fabs(lep_z0SinTheta[0]) < 15 && fabs(lep_z0SinTheta[1]) < 15 && fabs(lep_z0SinTheta[2]) < 15'
 zjets_FF_CR += ' && (80 < Z_MLL && Z_MLL < 100)'
-zjets_FF_CR += ' && nBJets == 0'
-zjets_FF_CR += ' && l_mT[2] < 50'
+zjets_FF_CR += ' && l_mT[2] < 40'
 zjets_FF_CR += ' && (Z2_MLL < 80 || 100 < Z2_MLL)'
-#zjets_FF_CR += ' && MET < 50'
+zjets_FF_CR += ' && MET < 60'
+#zjets_FF_CR += ' && l_pt[2] > 35'
+#zjets_FF_CR += ' && nBJets == 0'
+#zjets_FF_CR += ' && nLJets <= 2'
 if run_fakes:
     zjets_FF_CR += ' && (!isMC || nLepID == 2 || (0 < l_truthClass[0] && l_truthClass[0] <= 2))' #Prompt Leading Lepton
     zjets_FF_CR += ' && (!isMC || nLepID == 2 || (0 < l_truthClass[1] && l_truthClass[1] <= 2))' #Prompt Subleading Lepton
@@ -184,18 +186,17 @@ region_plots = {}
 # What regions to plot
 region_ops = []
 if run_den:
-    #region_ops += ['wzCR']
-    #region_ops += ['zjets_FF_CRden_m'] # Test Region
+    region_ops += ['zjets_FF_CRden_m'] # Test Region
     #region_ops += ['zjets_FF_CRden_eee'] # Test Region
     #region_ops += ['zjets_FF_CRden_m', 'zjets_FF_CRden_e']
     #region_ops += ['zjets_FF_CRden_eem'] # Test region
     #region_ops += ['zjets_FF_CRden_eem', 'zjets_FF_CRden_mmm']
     #region_ops += ['zjets_FF_CRden_eee', 'zjets_FF_CRden_mme']
-    region_ops += ['wjets_FF_VRden_emu']
+    #region_ops += ['wjets_FF_VRden_emu']
 elif run_num:
-    region_ops += ['wzCR']
+    #region_ops += ['wzCR']
     #region_ops += ['zjets_FF_CRnum_m']
-    #region_ops += ['zjets_FF_CRnum_m', 'zjets_FF_CRnum_e']
+    region_ops += ['zjets_FF_CRnum_m', 'zjets_FF_CRnum_e']
     #region_ops += ['zjets_FF_CRnum_eem', 'zjets_FF_CRnum_mmm']
     #region_ops += ['zjets_FF_CRnum_eee', 'zjets_FF_CRnum_mme']
     #region_ops += ['wjets_FF_VRnum_emu'] #, 'wjets_FF_VRnum_mue'
@@ -220,9 +221,9 @@ YIELD_TBL = YieldTable()
 # 'MC' is also a recognized label for all backgrounds
 YIELD_TBL.formulas['Data/MC'] = "data/MC"
 YIELD_TBL.formulas['VV/MC'] = "vv/MC"
-YIELD_TBL.formulas['normF'] = "(data-(MC-vv))/vv"
-YIELD_TBL.formulas['VV/sqrt(MC)'] = "vv/(MC**(0.5))"
-#YIELD_TBL.formulas['WZ/sqrt(Data)'] = "wz/(data**(0.5))"
+YIELD_TBL.formulas['Zjets/MC'] = "(zll)/MC"
+#YIELD_TBL.formulas['normF'] = "(data-(MC-vv))/vv"
+#YIELD_TBL.formulas['VV/sqrt(MC)'] = "vv/(MC**(0.5))"
 #YIELD_TBL.formulas['Bkg/Data'] = "(MC-wjets)/data"
 #YIELD_TBL.formulas['W+Jets/MC'] = "wjets/MC"
 #YIELD_TBL.formulas['Fakes/MC'] = "fakes/MC"
@@ -232,15 +233,19 @@ YIELD_TBL.formulas['VV/sqrt(MC)'] = "vv/(MC**(0.5))"
 #######################################
 # What variables to plot
 # Strings for plotting
-from example_plot_conf import *
+from example_plot_conf import * #TODO: Dont use import *
 PlotBase.save_dir = g.plots_dir
 Plot1D.auto_set_ylimits = True
 Plot1D.doLogY = False
 Plot2D.doLogZ = False
 Plot2D.auto_set_zlimits = False
 
-#vars_to_plot = ['isMC','l_pt[0]','l_pt[0]:l_pt[2]']
-vars_to_plot = ['l_pt[0]:l_pt[2]']
+vars_to_plot = []
+#vars_to_plot += ['l_pt[0]:l_pt[2]']
+vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
+#vars_to_plot += ['lep_d0sigBSCorr[2]','lep_z0SinTheta[2]','MLL']
+#vars_to_plot += ['nBJets','l_mT[2]','MET', 'Z2_MLL', 'Z_MLL','nLJets']
+#vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
 
 # Remove duplicate names
 vars_to_plot = list(set(vars_to_plot))

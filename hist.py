@@ -1,4 +1,5 @@
 import re
+from array import array
 
 # Root data analysis framework
 import ROOT as r
@@ -333,7 +334,7 @@ class DataMCStackHist1D(HistBase):
 
         if not len(histos):
             print "ERROR (make_stack_background) :: All SM hists are empty. Skipping"
-            return None, None, sig_histos, all_histos
+            return
 
         # Order the hists by total events
         histos = sorted(histos, key=lambda h: h.Integral())
@@ -435,17 +436,17 @@ class DataMCStackHist1D(HistBase):
             self.mc_errors.SetPointEYlow(i,error_sym)
 
     def normalize_stack(self, plot, reg):
-        if mc_total and mc_total.Integral():
-            mc_norm_factor = 1.0/mc_total.Integral()
-            pu.scale_thstack(mc_stack, mc_norm_factor)
-            mc_total.Scale(mc_norm_factor)
-            pu.scale_tgraph(mc_errors, mc_norm_factor)
-        for s in signals:
+        if self.mc_total and self.mc_total.Integral():
+            mc_norm_factor = 1.0/self.mc_total.Integral()
+            pu.scale_thstack(self.mc_stack, mc_norm_factor)
+            self.mc_total.Scale(mc_norm_factor)
+            pu.scale_tgraph(self.mc_errors, mc_norm_factor)
+        for s in self.signals:
             sig_norm_factor = 1.0/s.Integral() if s.Integral() else 1
             s.Scale(sig_norm_factor)
-        if data_hist and data_hist.Integral():
-            data_norm_factor = 1.0/data_hist.Integral()
-            pu.scale_tgraph(data_graph, data_norm_factor)
+        if self.data_hist and self.data_hist.Integral():
+            data_norm_factor = 1.0/self.data_hist.Integral()
+            pu.scale_tgraph(self.data, data_norm_factor)
 
     def reformat_axis(self, plot, reg):
         ''' Reformat axis to fit content and labels'''
