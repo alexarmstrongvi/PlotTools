@@ -1,4 +1,5 @@
 from PlotTools.plot import PlotBase, Plot1D, Plot2D, Types
+from copy import deepcopy
 
 ################################################################################
 # Variables
@@ -10,13 +11,14 @@ PlotBase.output_format = 'pdf'
 # These plots will be copied into new plots for each region being run
 plot_defaults = {
     # Event level
-    'eventweight'          : Plot1D( bin_range=[-0.003, 0.003], nbins=100, add_underflow = True, doNorm = True, xlabel='Event weight'),
+    'eventweight'          : Plot1D( bin_range=[-0.001, 0.001], nbins=100, add_underflow = True, doNorm = True, xlabel='Event weight'),
     'treatAsYear'          : Plot1D( bin_range=[2007.5, 2018.5], bin_width=1, xlabel='treatAsYear'),
     'isMC'                 : Plot1D( bin_range=[-1.5, 2.5],   bin_width=1, ptype=Types.stack, xlabel='is Monte Carlo'),
     # Multiplicity
     'n_preLeptons'         : Plot1D( bin_range=[-0.5, 10.5],  bin_width=1, xlabel='N_{pre-leptons}'),
     'n_baseLeptons'        : Plot1D( bin_range=[-0.5, 10.5],  bin_width=1, xlabel='N_{baseline leptons}'),
     'n_leptons'            : Plot1D( bin_range=[-0.5, 10.5],  bin_width=1, xlabel='N_{signal leptons}'),
+    'n_taus'               : Plot1D( bin_range=[-0.5, 10.5],  bin_width=1, xlabel='N_{signal taus}'),
     # Leptons
     'l_pt'                 : Plot1D( bin_range=[0.0, 500.0],  bin_width=5, xunits='GeV', xlabel='Lepton p_{T}'),
     'aID_Lep0Pt'           : Plot1D( bin_range=[0.0, 200.0],  nbins=40, xunits='GeV', xlabel='p_{T}^{leading lep} anti-ID'),
@@ -53,15 +55,14 @@ plot_defaults = {
     'baseTau_ID'           : Plot1D( bin_range=[-1.5, 5.5],   bin_width=1, xlabel='tau_{Baseline}^{ID}(non-inclusive)'),
 
     ## General lepton
-    'l_eta[0]'                : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.1, xlabel='Lepton0 #eta'),
-    'l_eta[1]'                : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.1, xlabel='Lepton1 #eta'),
-    'l_eta[2]'                : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.1, xlabel='Lepton2 #eta'),
+    'l_eta[0]'                : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.5, xlabel='Lepton0 #eta'),
+    'l_eta[1]'                : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.5, xlabel='Lepton1 #eta'),
     'l_phi'                : Plot1D( bin_range=[0.0, 3.15],   nbins=30, xlabel='Lepton #phi'),
     'lep_d0sigBSCorr[0]'   : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xlabel='Lep0 d_{0}/#sigma_{d_{0}} BSCorr'),
     'lep_d0sigBSCorr[1]'   : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xlabel='Lep1 d_{0}/#sigma_{d_{0}} BSCorr'),
     'lep_d0sigBSCorr[2]'   : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xlabel='Lep2 d_{0}/#sigma_{d_{0}} BSCorr'),
-    'lep_z0SinTheta[0]'    : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep0 z_{0}sin(#theta)'),
-    'lep_z0SinTheta[1]'    : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep1 z_{0}sin(#theta)'),
+    'lep_z0SinTheta[0]'    : Plot1D( bin_range=[-0.5, 0.5],     bin_width=0.01, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep0 z_{0}sin(#theta)'),
+    'lep_z0SinTheta[1]'    : Plot1D( bin_range=[-1, 1],     bin_width=0.05, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep1 z_{0}sin(#theta)'),
     'lep_z0SinTheta[2]'    : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep2 z_{0}sin(#theta)'),
     'l_flav'               : Plot1D( bin_range=[-0.5, 4.5],   bin_width=1, xlabel='Lepton flavor (0: e, 1: m)'),
     'l_type'               : Plot1D( bin_range=[-1.5, 39.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Lepton type'),
@@ -116,14 +117,15 @@ plot_defaults = {
     'MLLL'                 : Plot1D( bin_range=[0, 120],      nbins=60, add_underflow=True, xunits='GeV', xlabel='M_{lll}'),
     'MLL'                  : Plot1D( bin_range=[60, 120],     bin_width=1, add_underflow=True, doLogY=False, xunits='GeV', xlabel='M_{ll}'),
     #'MLL'                  : Plot1D( bin_range=[0, 300],     bin_width=5, xunits='GeV', xlabel='M_{ll}'),
-    'ptll'                 : Plot1D( bin_range=[0.0, 500.0],  nbins=50, xunits='GeV', xlabel='pT_{ll}'),
+    'ptll'                 : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='pT_{ll}'),
     # MET + leptons
     'MET'                  : Plot1D( bin_range=[0.0, 200.0],  bin_width=5, doLogY=False, xunits='GeV', xlabel='E_{T}^{miss}'),
     'METPhi'               : Plot1D( bin_range=[0.0, 3.15],   nbins=30, xlabel='MET_{#phi}'),
     'MCollASym'            : Plot1D( bin_range=[0.0, 250.0],  nbins=25, xunits='GeV', xlabel='LFV Collinear Mass m_{coll}'),
-    'dpt_ll'               : Plot1D( bin_range=[-100.0, 150.0],bin_width=5, doLogY=False, xunits='GeV', xlabel='#Deltap_{T}^{ll}'),
-    'DphiLep0MET'          : Plot1D( bin_range=[-3.15, 3.15], nbins=63, add_underflow=True, xlabel='#Delta#phi(l_{0},MET)'),
-    'DphiLep1MET'          : Plot1D( bin_range=[-3.15, 3.15], nbins=63, add_underflow=True, xlabel='#Delta#phi(l_{1},MET)'),
+    'dpt_ll'               : Plot1D( bin_range=[0, 150.0],  bin_width=2.5, doLogY=False, xunits='GeV', xlabel='#Deltap_{T}^{ll}'),
+    'DphiLep0MET'          : Plot1D( bin_range=[-0.2, 3.3], bin_width=0.1, add_underflow=True, xlabel='#Delta#phi(l_{0},MET)'),
+    'DphiLep1MET'          : Plot1D( bin_range=[-0.2, 3.3], bin_width=0.1, add_underflow=True, xlabel='#Delta#phi(l_{1},MET)'),
+    'DphiLep2MET'          : Plot1D( bin_range=[-0.2, 3.3], bin_width=0.1, add_underflow=True, xlabel='#Delta#phi(l_{2},MET)'),
     'tau_pT'               : Plot1D( bin_range=[0.0, 200.0],  nbins=20, xunits='GeV', xlabel='p_{T}^{subleading lep + MET}'),
     'taulep1_pT_ratio'     : Plot1D( bin_range=[0.0, 3],      nbins=20, xlabel='p_{T}^{subleading lep + MET} / p_{T}^{leading lep}'),
     # Jets
@@ -180,8 +182,9 @@ plot_defaults = {
     'Z_dilep_flav'         : Plot1D( bin_range=[-1.5, 5.5],   nbins=7, xlabel='Z dilepton flavor'),
     'Z2_dilep_flav'        : Plot1D( bin_range=[-1.5, 5.5],   nbins=7, xlabel='2nd Z dilepton flavor'),
     #'l_pt[2]'              : Plot1D( bin_range=[0.0, 50],     bin_width=1, xunits='GeV', xlabel='Fake candidate lepton p_{T}'),
-    'l_pt[2]'              : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='Fake candidate lepton p_{T}'),
-    'l_eta[2]'             : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.1, xlabel='Fake candidate lepton #eta'),
+    'l_pt[2]'              : Plot1D( bin_range=[0.0, 150.0],  bin_width=1, xunits='GeV', xlabel='Fake candidate lepton p_{T}'),
+    'lep_met_pT[2]'        : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='p_{T}(fake lepton + MET)'),
+    'l_eta[2]'             : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.01, xlabel='Fake candidate lepton #eta'),
     'l_flav[2]'            : Plot1D( bin_range=[-1.5, 2.5],   bin_width=1, xlabel='Fake candidate flavor'),
     'Z_dilep_sign'         : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='Z Dilepton Sign : OS(-1) SS(1)'),
     'Z2_dilep_sign'        : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='2nd Z Dilepton Sign : OS(-1) SS(1)'),
@@ -199,11 +202,16 @@ plot_defaults = {
     'DphiLepJetMET'        : Plot1D( bin_range=[-0.2, 3.2],   bin_width=0.2, xlabel='#Delta#phi(MET, closest lep/jet)'),
     'RelMET'               : Plot1D( bin_range=[0.0, 100.0],  bin_width=4, xunits='GeV', xlabel='E_{T,rel}^{miss}'),
     'RelMETbase'           : Plot1D( bin_range=[0.0, 100.0],  bin_width=4, xunits='GeV', xlabel='E_{T,rel}^{miss} baseline objects'),
+    '(ptll - l_pt[2])/ptll' : Plot1D( bin_range=[0.05, 1.05], bin_width = 0.05, xlabel="#DeltapT(Z,fake lep)/pT_{Z}"), 
+    '(ptll - l_pt[2] - MET)/ptll' : Plot1D( bin_range=[-.95, 1.05], bin_width = 0.1, xlabel="#DeltapT(Z,(fake lep + MET))/pT_{Z}"), 
 
     # 2D Plots (y:x)
     'DphiLepJetMET:RelMET' : Plot2D( bin_range=[0, 100, -0.1, 3.2], xbin_width = 4, ybin_width = 0.05, xunits='GeV',xlabel='E_{T,rel}^{miss}', ylabel='#Delta#phi(MET, closest lep/jet)'),
     'l_pt[0]:l_pt[2]'      : Plot2D( bin_range=[0, 100, 0, 100], xbin_width = 5, ybin_width = 5, xunits='GeV', xlabel='Fake probe lepton p_{T}', yunits='GeV', ylabel='Leading lepton p_{T}'),
     'RelMET:nLJets'        : Plot2D( bin_range=[-0.5, 7.5, 0, 100], xbin_width = 1, ybin_width = 4, xlabel="Light Jet Multiplicity" , ylabel='E_{T,rel}^{miss}'), 
+    'dR_Z_Fake:(ptll - l_pt[2])' : Plot2D( bin_range=[-9.5, 30.5, 0.5, 5.5], xbin_width = 2, ybin_width = 1, xlabel="#DeltapT(Z,fake lep)" , ylabel='#DeltaR_{fake, Z}'), 
+    'ptll:(ptll - l_pt[2])' : Plot2D( bin_range=[-10, 75, 0, 150], xbin_width = 5, ybin_width = 5, xlabel="#DeltapT(Z,fake lep)" , ylabel='Z pT'), 
+    'dR_Z_Fake:(ptll - l_pt[2])/ptll' : Plot2D( bin_range=[-0.05, 1.05, -0.5, 5.5], xbin_width = 0.02, ybin_width = 1, xlabel="#DeltapT(Z,fake lep)/pT_{Z}" , ylabel='#DeltaR_{fake, Z}'), 
 }
 
 # Add any labels to the plots
@@ -234,3 +242,25 @@ plot_defaults['l_eta[2]'].rebin_bins = [-3.0, -2.5, -1.45, 0, 1.45, 2.5, 3.0]
 # To alter the plot properties for a specific region
 # Deep copy the default plot into new plot dictionary
 # Edit that copy as needed
+region_plots = {}
+region_plots['wjets_FF_VRden_emu'] = {
+  'MLL' : deepcopy(plot_defaults['MLL'])
+}
+region_plots['wjets_FF_VRden_emu']['MLL'].update(bin_range=[0, 150], bin_width=5)
+
+region_plots['wjets_FF_VRden_mue'] = {
+  'MLL' : deepcopy(plot_defaults['MLL'])
+}
+region_plots['wjets_FF_VRden_mue']['MLL'].update(bin_range=[0, 150], bin_width=5)
+
+region_plots['wjets_FF_VRnum_emu'] = {
+  'MLL' : deepcopy(plot_defaults['MLL'])
+}
+region_plots['wjets_FF_VRnum_emu']['MLL'].update(bin_range=[0, 150], bin_width=5)
+
+region_plots['wjets_FF_VRnum_mue'] = {
+'MLL' : deepcopy(plot_defaults['MLL'])
+}
+region_plots['wjets_FF_VRnum_mue']['MLL'].update(bin_range=[0, 150], bin_width=5)
+
+

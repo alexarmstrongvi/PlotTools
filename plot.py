@@ -188,7 +188,7 @@ class Plot1D(PlotBase) :
 
         self.xmin, self.xmax, self.ymin, self.ymax = self.determine_range(bin_range)
         if nbins or bin_width:
-            self.nbins = determine_nbins(bin_width) if bin_width else nbins
+            self.nbins = determine_nbins(self.xmax, self.xmin, bin_width, self.variable) if bin_width else nbins
 
     def bin_width(self):
         return (self.xmax - self.xmin) / self.nbins
@@ -262,7 +262,7 @@ class Plot1D(PlotBase) :
         return xlabel, ylabel
 
     def determine_name(self, region, variable):
-        var_stripped = re.sub(r'[(){}[\]]+','', variable)
+        var_stripped = pu.strip_for_root_name(variable)
         return "%s_%s"%(region, var_stripped)
 
     def set_bin_labels(self, axis_hist):
@@ -471,6 +471,9 @@ class Plot2D(PlotBase) :
         self.xlabel, self.ylabel, self.zlabel = self.determine_labels(xlabel, ylabel, zlabel)
         self.style = style
 
+        self.rebin_xbins = []
+        self.rebin_ybins = []
+
     def update(self, region, xvar, yvar):
         self.region = region
         self.xvariable = xvar
@@ -557,8 +560,8 @@ class Plot2D(PlotBase) :
         return xlabel, ylabel, zlabel
 
     def determine_name(self, region, xvariable, yvariable):
-        xvar_stripped = re.sub(r'[(){}[\]]+','', xvariable)
-        yvar_stripped = re.sub(r'[(){}[\]]+','', yvariable)
+        xvar_stripped = pu.strip_for_root_name(xvariable)
+        yvar_stripped = pu.strip_for_root_name(yvariable)
         return "%s_%s_%s"%(region, xvar_stripped, yvar_stripped)
 
     def setDefaultPads(self, name) :

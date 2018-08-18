@@ -1,9 +1,8 @@
 import ROOT
 from math import sqrt, log10, isnan
+import re
 ROOT.gROOT.SetBatch(True)
-import array
-
-import tools.plot as plot
+from array import array
 
 ROOT.gStyle.SetCanvasPreferGL(ROOT.kTRUE)
 
@@ -28,6 +27,12 @@ def get_order_of_mag(num):
 def normalize_plot(hist):
     if hist and hist.Integral():
         hist.Scale(1.0/hist.Integral())
+
+def strip_for_root_name(string):
+    string = re.sub(r'[(){}[\]\ ]+','', string)
+    string = re.sub(r'-','_minus_', string)
+    string = re.sub(r'/','_divide_', string)
+    return string
 
 # ----------------------------------------------
 #  TH1D Methods
@@ -377,8 +382,6 @@ def divide_histograms(hnum, hden, xtitle, ytitle) :
     return g
 
 def add_to_band(g1, g2) : #, sys_name) :
-
-
     if g1.GetN()!=g2.GetN() :
         print "plot_utils::add_to_band WARNING    input graphs do not have the same number of points!"
 
@@ -424,6 +427,10 @@ def add_to_band(g1, g2) : #, sys_name) :
                 #print "    > %s - "%sys_name, eyl
                 g2.SetPointEYlow(i,eyl)
 
+def get_bin_edges(axis):
+    return [axis.GetBinLowEdge(x) for x in range(1, axis.GetNbins()+2)]
+        
+         
 # ----------------------------------------------
 #  TH2F Methods
 # ----------------------------------------------
@@ -436,6 +443,69 @@ def th2f(name, title, nxbin, xlow, xhigh, nybin, ylow, yhigh, xtitle, ytitle) :
     h.GetYaxis().SetTitle(ytitle)
     h.Sumw2()
     return h
+
+def make_rebinned_th2f(hist, xbins=None, ybins=None, name=''):
+    #NOTE: overwrites hist if name is the same as hist.GetName() or name is not provided
+    # else it returns a new histogram
+    if not xbins:
+        xbins = array('d',get_bin_edges(hist.GetXaxis()))
+    if not ybins:
+        ybins = array('d', get_bin_edges(hist.GetYaxis()))
+    nx = len(xbins) - 1
+    ny = len(ybins) - 1
+    old_name = name if name else hist.GetName()
+    name = name + 'tmp'
+    hnew = ROOT.TH2F(name, hist.GetTitle(), nx,xbins,ny,ybins)
+    xaxis = hist.GetXaxis()
+    yaxis = hist.GetYaxis()
+    for ibin in range(0, xaxis.GetNbins()+1):
+        for jbin in range(0, yaxis.GetNbins()+1):
+            xval = xaxis.GetBinCenter(ibin)
+            yval = yaxis.GetBinCenter(jbin)
+            bin_val = hist.GetBinContent(ibin, jbin)
+            hnew.Fill(xval ,yval, bin_val)
+
+    if old_name == hist.GetName() or not name:
+        hist.Delete()
+    hnew.SetName(old_name)
+    return hnew
+
+def print_hist(hist):
+    if isinstance(hist, ROOT.TH2):
+        xaxis = hist.GetXaxis()
+        yaxis = hist.GetYaxis()
+        nxbins = xaxis.GetNbins()+1
+        nybins = yaxis.GetNbins()+1
+        print "\t(xbin, ybin) = (xbin range, ybin range) = bin value"
+        for xbin in range(0, nxbins + 1):
+            for ybin in range(0, nybins + 1):
+                #xbin_center = xaxis.GetBinCenter(xbin)
+                #ybin_center = yaxis.GetBinCenter(ybin)
+                xbin_low = xaxis.GetBinLowEdge(xbin)
+                xbin_high = xaxis.GetBinUpEdge(xbin)
+                ybin_low = yaxis.GetBinLowEdge(ybin)
+                ybin_high = yaxis.GetBinUpEdge(ybin)
+                bin_value = hist.GetBinContent(xbin, ybin)
+                underflow = xbin == 0 or ybin == 0
+                overflow = xbin == nxbins or ybin == nybins
+                if (underflow or overflow) and not bin_value: continue
+                print "\t(%d, %d) = ([%.2f - %.2f], [%.2f - %.2f]) = %.3f" % (
+                        xbin, ybin, xbin_low, xbin_high, ybin_low, ybin_high, bin_value)
+    elif isinstance(hist, ROOT.TH1):
+        xaxis = hist.GetXaxis()
+        nxbins = xaxis.GetNbins()+1
+        print "\t(xbin) = [xbin range] = bin value"
+        for xbin in range(0, nxbins + 1):
+                xbin_low = xaxis.GetBinLowEdge(xbin)
+                xbin_high = xaxis.GetBinUpEdge(xbin)
+                bin_value = hist.GetBinContent(xbin)
+                underflow = xbin == 0
+                overflow = xbin == nxbins
+                if (underflow or overflow) and not bin_value: continue
+                print "\t(%d) = [%.2f - %.2f] = %.3f" % (
+                        xbin, xbin_low, xbin_high, bin_value)
+    else:
+        print "Histogram type not recognized: ", type(hist)
 
 def scale_thstack(stack, scale_factor):
     '''
@@ -547,10 +617,10 @@ def set_palette(name="", ncontours=999) :
         red   = [0.00, 0.00, 0.87, 1.00, 0.51]
         green = [0.00, 0.81, 1.00, 0.20, 0.00]
         blue  = [0.51, 1.00, 0.12, 0.00, 0.00]
-    s = array.array('d', stops)
-    R = array.array('d', red)
-    g = array.array('d', green)
-    b = array.array('d', blue)
+    s = array('d', stops)
+    R = array('d', red)
+    g = array('d', green)
+    b = array('d', blue)
     npoints = len(s)
     ROOT.TColor.CreateGradientColorTable(npoints, s, R, g, b, ncontours)
     ROOT.gStyle.SetNumberContours(ncontours)

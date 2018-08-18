@@ -40,6 +40,7 @@ class HistBase:
         #TODO: Get python to get all class variables that inherit fromTObject
         #      (e.g. use self.__class__.__dict__)
         raise NotImplementedError()
+    
     def clear(self):
         # Delete all underlying root objects
         # -
@@ -70,6 +71,7 @@ class RatioHist1D(HistBase) :
         #self.get_ratio_errors(plot)
         #self.get_ratio_graph(plot)
 
+
     def list_of_root_objects(self):
         return [
             self.axis,
@@ -80,6 +82,11 @@ class RatioHist1D(HistBase) :
 class DataMCRatioHist1D(RatioHist1D) :
     def __init__(self, plot, reg, stack_hist):
         #TODO: take samples as input as opposed to stack hist
+        self.axis = None
+        self.errors = None
+        self.ratio = None
+        if not stack_hist.mc_stack: return
+
         self.ratio_label = 'Data/MC'
         self.get_ratio_axis(plot, stack_hist.mc_stack)
         self.get_ratio_errors(stack_hist.mc_errors)
@@ -94,6 +101,8 @@ class DataMCRatioHist1D(RatioHist1D) :
 
     def get_ratio_axis(self, plot, stack):
         # yaxis
+        #if not stack:
+        #    return
         self.axis = stack.GetStack().Last().Clone("h_sm")
         h_sm = self.axis #TODO: remove relabel
         yax = h_sm.GetYaxis()
@@ -265,7 +274,6 @@ class DataMCStackHist1D(HistBase):
         return hax
 
     def add_stack_backgrounds(self, plot, reg, YIELD_TBL, bkgds):
-        self.mc_stack = r.THStack("stack_"+plot.name, "")
 
         # Initilize lists and defaults
         histos = []
@@ -276,8 +284,8 @@ class DataMCStackHist1D(HistBase):
         # Make MC sample hists
         for mc_sample in bkgds :
             # Initilize histogram
-            h_name_tmp = re.sub(r'[(){}[\]]+','',plot.variable)
-            h_name = "h_"+reg.name+'_'+mc_sample.name+"_"+h_name_tmp
+            var_name = pu.strip_for_root_name(plot.variable)
+            h_name = "h_"+reg.name+'_'+mc_sample.name+"_"+ var_name
             hists_to_clear.append(h_name)
             h = pu.th1d(h_name, "", int(plot.nbins),
                         plot.xmin, plot.xmax,
@@ -339,6 +347,7 @@ class DataMCStackHist1D(HistBase):
         # Order the hists by total events
         histos = sorted(histos, key=lambda h: h.Integral())
 
+        self.mc_stack = r.THStack("stack_"+plot.name, "")
         for h in histos :
             self.mc_stack.Add(h)
 
@@ -355,7 +364,8 @@ class DataMCStackHist1D(HistBase):
 
     def add_stack_data(self, plot, reg, YIELD_TBL, data):
         #TODO: Look for a way to combine with backgrounds
-        hd_name = "h_"+reg.name+'_data_'+plot.variable
+        var_name = pu.strip_for_root_name(plot.variable)
+        hd_name = "h_"+reg.name+'_data_'+ var_name
         self.data_hist = pu.th1d(hd_name, "", int(plot.nbins),
                                   plot.xmin, plot.xmax,
                                   plot.xlabel, plot.ylabel)
@@ -364,6 +374,7 @@ class DataMCStackHist1D(HistBase):
         cut = "(" + reg.tcut + ")"
         cut = r.TCut(cut)
         draw_cmd = "%s>>%s"%(plot.variable, self.data_hist.GetName())
+
         data.tree.Draw(draw_cmd, cut, "goff")
         self.data_hist.GetXaxis().SetLabelOffset(-999)
 
@@ -409,7 +420,11 @@ class DataMCStackHist1D(HistBase):
             if h.Integral(0, -1) <= 0: continue
             self.leg.AddEntry(h, h.leg_name, "f")
 
-        totalSM = self.mc_stack.GetStack().Last().Clone("totalSM")
+        try:
+            totalSM = self.mc_stack.GetStack().Last().Clone("totalSM")
+        except ReferenceError:
+            print "WARNING (add_stack_mc_errors) :: Unable to access stack"
+            return
         self.mc_errors = pu.th1_to_tgraph(totalSM)
         totalSM.Delete()
         self.mc_errors.SetMarkerSize(0)
@@ -434,6 +449,7 @@ class DataMCStackHist1D(HistBase):
             self.mc_errors.SetPointEYhigh(i, error_sym)
             self.mc_errors.SetPointEYlow(i,0.0)
             self.mc_errors.SetPointEYlow(i,error_sym)
+        return 0
 
     def normalize_stack(self, plot, reg):
         if self.mc_total and self.mc_total.Integral():
@@ -583,8 +599,8 @@ class Hist2D(HistBase) :
         self.hist = r.TH2D(plot.name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
         for sample in samples:
 
-            x_var = re.sub(r'[(){}[\]]+','',plot.xvariable)
-            y_var = re.sub(r'[(){}[\]]+','',plot.yvariable)
+            x_var = pu.strip_for_root_name(plot.xvariable)
+            y_var = pu.strip_for_root_name(plot.yvariable)
             h_name_tmp = "h_"+reg.name+'_'+sample.name+"_"+x_var+"_"+y_var
             h_tmp = r.TH2D(h_name_tmp, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
             # Draw final histogram (i.e. selections and weights applied)
