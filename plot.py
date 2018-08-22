@@ -46,15 +46,18 @@ class PlotBase(object):
     save_dir = './'
     output_format = 'pdf'
     def __init__(self):
-        pass
+        self.suffix = ""
     def save_plot(self, can, suffix = ""):
+        if suffix:
+            suffix = "_" + suffix
+        if self.suffix:
+            suffix += "_" + self.suffix
         save_name = self.name + suffix + "." + self.output_format
         save_path = os.path.join(self.save_dir, save_name)
         save_path = os.path.normpath(save_path)
         can.SaveAs(save_path)
 
 class Plot1D(PlotBase) :
-
     # Class defaults for axis range depending on log and normalization settings
     xmin = 0
     xmax = 50.0
@@ -82,6 +85,7 @@ class Plot1D(PlotBase) :
         xunits = "",
         ylabel = "",
         yunits = "",
+        suffix = "",
         bin_range = [], # [x0, x1, y0, y1]
         bin_width = None, # Can specify to override nbins
         nbins = 20,
@@ -103,6 +107,7 @@ class Plot1D(PlotBase) :
         self.region = region
         self.variable = variable
         self.name = name if name else self.determine_name(region, variable)
+        self.suffix = suffix
 
         # Objects
         self.pads = None
@@ -167,6 +172,7 @@ class Plot1D(PlotBase) :
             self.name = name
         elif not name and (region or variable):
             self.name = self.determine_name(region, variable)
+
 
         # Flags
         if doLogY: self.doLogY = doLogY
@@ -419,6 +425,7 @@ class Plot2D(PlotBase) :
         yunits = "",
         zlabel = "",
         zunits = "",
+        suffix = "",
         bin_range = [], # [x0, x1, y0, y1, z0, z1]
         ybin_width = None, # Can specify to override nbins
         xbin_width = None, # Can specify to override nbins
@@ -436,6 +443,7 @@ class Plot2D(PlotBase) :
         self.xvariable = xvariable
         self.yvariable = yvariable
         self.name = name if name else self.determine_name(region, xvariable, yvariable)
+        self.suffix = suffix
 
         # Objects
         self.pads = None

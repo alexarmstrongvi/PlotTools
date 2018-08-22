@@ -22,6 +22,8 @@ Z_ee = 'Z_dilep_flav == 2'
 Z_mumu = 'Z_dilep_flav == 3'
 Z_DF_OS = 'Z_dilep_flav <= 1 && ((l_q[0]*l_q[1])<0)'
 Z_SF_OS = 'Z_dilep_flav > 1 && ((l_q[0]*l_q[1])<0)'
+lep2_e =  'l_flav[2] == 0'
+lep2_m =  'l_flav[2] == 1'
 
 # Same flavor lepton triggers
 ee15_trig   = 'HLT_2e12_lhloose_L12EM10VH'
@@ -113,6 +115,18 @@ wz_cr_cut += " && 75 < Z_MLL && Z_MLL < 105"
 wz_cr_cut += ' && nBJets == 0'
 wz_cr_cut += ' && l_mT[2] > 50'
 REGIONS[-1].tcut = wz_cr_cut
+REGIONS.append(Region("wzCR_e", "WZ CR (e+Z)"))
+REGIONS[-1].tcut = wz_cr_cut + " && " + SF_OS + " && " + lep2_e
+REGIONS.append(Region("wzCR_m", "WZ CR (m+Z)"))
+REGIONS[-1].tcut = wz_cr_cut + " && " + SF_OS + " && " + lep2_m
+REGIONS.append(Region("wzCR_eee", "WZ CR (e+ee)"))
+REGIONS[-1].tcut = wz_cr_cut + " && " + Z_ee + " && " + lep2_e
+REGIONS.append(Region("wzCR_emm", "WZ CR (e+mm)"))
+REGIONS[-1].tcut = wz_cr_cut + " && " + Z_mumu + " && " + lep2_e
+REGIONS.append(Region("wzCR_mee", "WZ CR (m+ee)"))
+REGIONS[-1].tcut = wz_cr_cut + " && " + Z_ee + " && " + lep2_m
+REGIONS.append(Region("wzCR_mmm", "WZ CR (m+mm)"))
+REGIONS[-1].tcut = wz_cr_cut + " && " + Z_mumu + " && " + lep2_m
 
 zll_cr_base = "1"
 #zll_cr_base = "75 < Z_MLL && Z_MLL < 105 && " + Z_SF_OS

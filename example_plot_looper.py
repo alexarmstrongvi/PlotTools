@@ -86,6 +86,11 @@ def make_plots() :
         n_total = len(plots_with_region)
         for n_current, plot in enumerate(plots_with_region, 1):
             print "[%d/%d] Plotting %s"%(n_current, n_total, plot.name), 40*'-'
+            if args.suffix:
+                if plot.suffix:
+                    plot.suffix += "_" + args.suffix
+                else:
+                    plot.suffix = args.suffix
 
             # Clear the yield table
             YIELD_TBL.reset()
@@ -238,6 +243,9 @@ if __name__ == '__main__':
         parser.add_argument("-c", "--plotConfig",
                                 default="",
                                 help='name of the config file')
+        parser.add_argument("-s", "--suffix",
+                                default="",
+                                help='Suffix to prepend to output plot names')
         parser.add_argument("-o", "--outdir",
                                 default="./",
                                 help='name of the output directory to save plots.')

@@ -25,13 +25,17 @@ ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ################################################################################
 import global_variables as g
 # Toggles
-run_fakes = True
+run_fakes = False
 add_truth_den = False
-add_truth_num = True
+add_truth_num = False
 run_den = False
 run_num = True
 
-assert not run_fakes or (add_truth_num)
+run_zjets = False
+run_base = True
+
+assert run_zjets != run_base
+assert not run_fakes or add_truth_num
 assert not (run_num and run_den)
 assert not (add_truth_num and add_truth_den)
 
@@ -200,20 +204,24 @@ region_plots = {}
 # What regions to plot
 region_ops = []
 if run_den:
-    #region_ops += ['zjets_FF_CRden_m'] # Test Region
-    #region_ops += ['zjets_FF_CRden_eee'] # Test Region
-    #region_ops += ['zjets_FF_CRden_m', 'zjets_FF_CRden_e']
-    #region_ops += ['zjets_FF_CRden_eem'] # Test region
-    #region_ops += ['zjets_FF_CRden_eem', 'zjets_FF_CRden_mmm']
-    #region_ops += ['zjets_FF_CRden_eee', 'zjets_FF_CRden_mme']
-    region_ops += ['wjets_FF_VRden_emu', 'wjets_FF_VRden_mue']
+    if run_zjets:
+        #region_ops += ['zjets_FF_CRden_m'] # Test Region
+        #region_ops += ['zjets_FF_CRden_eee'] # Test Region
+        #region_ops += ['zjets_FF_CRden_m', 'zjets_FF_CRden_e']
+        region_ops += ['zjets_FF_CRden_eem', 'zjets_FF_CRden_mmm']
+        region_ops += ['zjets_FF_CRden_eee', 'zjets_FF_CRden_mme']
+    if run_base:
+        region_ops += ['wjets_FF_VRden_emu', 'wjets_FF_VRden_mue']
 elif run_num:
-    #region_ops += ['wzCR']
-    #region_ops += ['zjets_FF_CRnum_m']
-    #region_ops += ['zjets_FF_CRnum_m', 'zjets_FF_CRnum_e']
-    #region_ops += ['zjets_FF_CRnum_eem', 'zjets_FF_CRnum_mmm']
-    #region_ops += ['zjets_FF_CRnum_eee', 'zjets_FF_CRnum_mme']
-    region_ops += ['wjets_FF_VRnum_emu', 'wjets_FF_VRnum_mue']
+    if run_zjets:
+        region_ops += ['wzCR']
+        #region_ops += ['wzCR_eee', 'wzCR_emm','wzCR_mee', 'wzCR_mmm']
+        #region_ops += ['zjets_FF_CRnum_m']
+        #region_ops += ['zjets_FF_CRnum_m', 'zjets_FF_CRnum_e']
+        region_ops += ['zjets_FF_CRnum_eem', 'zjets_FF_CRnum_mmm']
+        region_ops += ['zjets_FF_CRnum_eee', 'zjets_FF_CRnum_mme']
+    if run_base:
+        region_ops += ['wjets_FF_VRnum_emu', 'wjets_FF_VRnum_mue']
 else:
     #region_ops += ['zjets_FF_CR']
     region_ops += ['zCR']
@@ -234,15 +242,18 @@ YIELD_TBL = YieldTable()
 # Formulas should use sample names and these symbols: +, -, *, /, (, ), [0-9]
 # 'MC' is also a recognized label for all backgrounds
 YIELD_TBL.formulas['Data/MC'] = "data/MC"
-#YIELD_TBL.formulas['Zjets/MC'] = "(zll)/MC"
-#YIELD_TBL.formulas['VV/MC'] = "vv/MC"
-#YIELD_TBL.formulas['normF'] = "(data-(MC-vv))/vv"
-#YIELD_TBL.formulas['VV/sqrt(MC)'] = "vv/(MC**(0.5))"
-#YIELD_TBL.formulas['Bkg/Data'] = "(MC-wjets)/data"
-#YIELD_TBL.formulas['W+Jets/MC'] = "wjets/MC"
-#YIELD_TBL.formulas['W+Jets/Data'] = "wjets/data"
-YIELD_TBL.formulas['Fakes/MC'] = "fakes/MC"
-YIELD_TBL.formulas['Fakes/Data'] = "fakes/data"
+if run_zjets:
+    YIELD_TBL.formulas['Zjets/MC'] = "(zll)/MC"
+    YIELD_TBL.formulas['VV/MC'] = "vv/MC"
+    YIELD_TBL.formulas['normF'] = "(data-(MC-vv))/vv"
+    YIELD_TBL.formulas['VV/sqrt(MC)'] = "vv/(MC**(0.5))"
+if run_base:
+    YIELD_TBL.formulas['Bkg/Data'] = "(MC-wjets)/data"
+    YIELD_TBL.formulas['W+Jets/MC'] = "wjets/MC"
+    YIELD_TBL.formulas['W+Jets/Data'] = "wjets/data"
+if run_fakes:
+    YIELD_TBL.formulas['Fakes/MC'] = "fakes/MC"
+    YIELD_TBL.formulas['Fakes/Data'] = "fakes/data"
 
 
 #######################################
@@ -255,26 +266,33 @@ Plot1D.doLogY = False
 Plot2D.doLogZ = False
 Plot2D.auto_set_zlimits = False
 
-vars_to_plot = []
-#vars_to_plot += ['ptll']
-#vars_to_plot += ['dR_Z_Fake:(ptll - l_pt[2])', 'ptll:(ptll - l_pt[2])', 'dR_Z_Fake:(ptll - l_pt[2])/ptll', '(ptll - l_pt[2])/ptll', '(ptll - l_pt[2] - MET)/ptll', 'lep_met_pT[2]', 'DphiLep2MET']
-#vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
-vars_to_plot += ['l_pt[0]','l_pt[1]', 'MET', 'l_eta[1]', 'dpt_ll', 'RelMET', 'MLL', 'nLJets', 'l_mT[1]', 'l_mT[0]','DphiLep1MET', 'DphiLep0MET']
-#vars_to_plot += ['MET', 'dpt_ll', 'RelMET', 'MLL', 'l_mT[1]', 'l_mT[0]', 'DphiLep1MET', 'DphiLep0MET']
-#vars_to_plot += ['lep_d0sigBSCorr[0]','lep_z0SinTheta[0]','lep_d0sigBSCorr[1]','lep_z0SinTheta[1]']
-#vars_to_plot += ['nBJets','l_mT[2]','MET', 'Z2_MLL', 'Z_MLL','nLJets']
-#vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
+vars_to_plot_all = []
+#vars_to_plot_all += ['ptll']
+#vars_to_plot_all += ['lep_d0sigBSCorr[0]','lep_z0SinTheta[0]','lep_d0sigBSCorr[1]','lep_z0SinTheta[1]']
 
-# Remove duplicate names
-vars_to_plot = list(set(vars_to_plot))
-assert vars_to_plot, ("No plots requested")
 
 ################################################################################
 # Create plots
 ################################################################################
 PLOTS = []
-for var in vars_to_plot:
-    for region in region_ops:
+for region in region_ops:
+    vars_to_plot = vars_to_plot_all
+    if "wjets" in region:
+        #vars_to_plot += ['l_pt[0]','l_pt[1]', 'MET', 'l_eta[1]', 'dpt_ll', 'RelMET', 'MLL', 'nLJets', 'l_mT[1]', 'l_mT[0]','DphiLep1MET', 'DphiLep0MET']
+        vars_to_plot += ['l_pt[0]']
+    if "zjets" in region:
+        #vars_to_plot += ['dR_Z_Fake:(ptll - l_pt[2])', 'ptll:(ptll - l_pt[2])', 'dR_Z_Fake:(ptll - l_pt[2])/ptll', '(ptll - l_pt[2])/ptll', '(ptll - l_pt[2] - MET)/ptll', 'lep_met_pT[2]', 'DphiLep2MET']
+        #vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
+        #vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
+        vars_to_plot += ['l_pt[2]']
+    if "wzCR" in region:
+        vars_to_plot += ['l_pt[1]']
+    
+    # Remove duplicate names
+    vars_to_plot = list(set(vars_to_plot))
+    assert vars_to_plot, ("No plots requested")
+    
+    for var in vars_to_plot:
         key = var
         # Grab the default plot unless a region specific one is defined
         if region in region_plots and key in region_plots[region]:
