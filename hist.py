@@ -271,8 +271,6 @@ class DataMCStackHist1D(HistBase):
             new_bins = array('d', plot.rebin_bins)
             hax = hax.Rebin(len(new_bins)-1, 'axes', new_bins)
 
-        return hax
-
     def add_stack_backgrounds(self, plot, reg, YIELD_TBL, bkgds):
 
         # Initilize lists and defaults
@@ -449,7 +447,7 @@ class DataMCStackHist1D(HistBase):
             self.mc_errors.SetPointEYhigh(i, error_sym)
             self.mc_errors.SetPointEYlow(i,0.0)
             self.mc_errors.SetPointEYlow(i,error_sym)
-        return 0
+        return
 
     def normalize_stack(self, plot, reg):
         if self.mc_total and self.mc_total.Integral():

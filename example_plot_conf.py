@@ -115,7 +115,6 @@ plot_defaults = {
     #'MLLL'                 : Plot1D( bin_range=[60, 400],     nbins=60, add_underflow=True, xunits='GeV', xlabel='M_{lll}'),
     'MLLL'                 : Plot1D( bin_range=[0, 120],      nbins=60, add_underflow=True, xunits='GeV', xlabel='M_{lll}'),
     'MLL'                  : Plot1D( bin_range=[60, 120],     bin_width=1, add_underflow=True, doLogY=False, xunits='GeV', xlabel='M_{ll}'),
-    #'MLL'                  : Plot1D( bin_range=[0, 300],     bin_width=5, xunits='GeV', xlabel='M_{ll}'),
     'ptll'                 : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='pT_{ll}'),
     # MET + leptons
     'MET'                  : Plot1D( bin_range=[0.0, 200.0],  bin_width=5, doLogY=False, xunits='GeV', xlabel='E_{T}^{miss}'),
@@ -188,7 +187,7 @@ plot_defaults = {
     'Z_dilep_sign'         : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='Z Dilepton Sign : OS(-1) SS(1)'),
     'Z2_dilep_sign'        : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='2nd Z Dilepton Sign : OS(-1) SS(1)'),
     'Z_Lep2_dPhi_MET'      : Plot1D( bin_range=[-3.15, 3.15], nbins=63, add_underflow=True, xlabel='#Delta#phi(l_{3},MET)'),
-    'l_mT[2]'              : Plot1D( bin_range=[0.0, 60.0],  bin_width=1, xunits='GeV', xlabel='Lepton2 m_{T}'),
+    'l_mT[2]'              : Plot1D( bin_range=[0.0, 200.0],  bin_width=5, xunits='GeV', xlabel='Lepton2 m_{T}'),
     'l_mT[1]'              : Plot1D( bin_range=[0.0, 300.0],  bin_width=5, xunits='GeV', xlabel='Lepton1 m_{T}'),
     'l_mT[0]'              : Plot1D( bin_range=[0.0, 300.0],  bin_width=5, xunits='GeV', xlabel='Lepton0 m_{T}'),
     'dR_ZLep0_Fake'        : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR_{fake, Zlep0}'),
@@ -232,8 +231,7 @@ plot_defaults['l_iso2'].bin_labels = plot_defaults['l_iso0'].bin_labels
 plot_defaults['l_ID'].bin_labels = ['', 'tight', 'medium', 'looseBlayer','loose', 'very loose','']
 
 
-#plot_defaults['l_mT[2]'].rebin_bins = [0,50,60,70,80,90,100,120,140,160,190,220,250,300]
-plot_defaults['l_pt[2]'].rebin_bins = [0,10,11,15,20,25,35,150]
+#plot_defaults['l_pt[2]'].rebin_bins = [0,10,11,15,20,25,35,150]
 plot_defaults['l_eta[2]'].rebin_bins = [-3.0, -2.5, -1.45, 0, 1.45, 2.5, 3.0]
 #plot_defaults['l_pt[1]'].rebin_bins = [0,10,11,12,13,14,15,17,20,25,35,100]
 #plot_defaults['l_pt[1]'].rebin_bins = [0,10,11,15,20,25,35,100]
@@ -242,6 +240,7 @@ plot_defaults['l_eta[2]'].rebin_bins = [-3.0, -2.5, -1.45, 0, 1.45, 2.5, 3.0]
 # Deep copy the default plot into new plot dictionary
 # Edit that copy as needed
 region_plots = {}
+
 region_plots['wjets_FF_VRden_emu'] = {
   'MLL' : deepcopy(plot_defaults['MLL'])
 }

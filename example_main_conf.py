@@ -29,11 +29,11 @@ run_fakes = False
 add_truth_den = False
 add_truth_num = False
 run_den = False
-run_num = True
-
+run_num = False
 run_zjets = False
-run_base = True
+run_base = False
 
+assert run_den != run_num
 assert run_zjets != run_base
 assert not run_fakes or add_truth_num
 assert not (run_num and run_den)
@@ -68,27 +68,36 @@ from example_sample_conf import *
 ## Build the TChain/TTree for each sample
 # To remove sample from plot, comment out the line setting its TChain
 # Samples with empty TChains get removed below
-data_dsids = g.groups['data15']+g.groups['data16']
 
-data.set_chain_from_dsid_list(data_dsids, data_ntuple_dir)
+data.set_chain_from_dsid_list(g.groups['data'], data_ntuple_dir)
+
 top.set_chain_from_dsid_list(g.groups['top'], bkg_ntuple_dir)
 #ttbar.set_chain_from_dsid_list(g.groups['ttbar'], bkg_ntuple_dir)
 #stop.set_chain_from_dsid_list(g.groups['singletop'], bkg_ntuple_dir)
 #wtop.set_chain_from_dsid_list(g.groups['Wt'], bkg_ntuple_dir)
-#ttbarlep.set_chain_from_dsid_list(g.groups['ttbar_lep'], bkg_ntuple_dir)
+
+ttbarlep.set_chain_from_dsid_list(g.groups['ttbar_lep'], bkg_ntuple_dir)
+
 VV.set_chain_from_dsid_list(g.groups['VV'], bkg_ntuple_dir)
+
 VVV.set_chain_from_dsid_list(g.groups['VVV'], bkg_ntuple_dir)
+
 zll.set_chain_from_dsid_list(g.groups['zll'], bkg_ntuple_dir)
 #zee.set_chain_from_dsid_list(g.groups['zee'], bkg_ntuple_dir)
 #zmumu.set_chain_from_dsid_list(g.groups['zmumu'], bkg_ntuple_dir)
+
 ztt.set_chain_from_dsid_list(g.groups['ztt'], bkg_ntuple_dir)
 #ztt_sherpa.set_chain_from_dsid_list(g.groups['ztt_sherpa'], bkg_ntuple_dir)
 #ztt_lowMLL.set_chain_from_dsid_list(g.groups['ztt_lowMLL'], bkg_ntuple_dir)
 #ztt_2jets.set_chain_from_dsid_list(g.groups['ztt_2jets'], bkg_ntuple_dir)
 ##ztt_l13l7.set_chain_from_dsid_list(g.groups['ztt_l13l7'], bkg_ntuple_dir)
+
 wjets.set_chain_from_dsid_list(g.groups['wjets'], bkg_ntuple_dir)
+
 wgamma.set_chain_from_dsid_list(g.groups['wgamma'], bkg_ntuple_dir)
+
 zgamma.set_chain_from_dsid_list(g.groups['zgamma'], bkg_ntuple_dir)
+
 higgs.set_chain_from_dsid_list(g.groups['higgs'], bkg_ntuple_dir)
 #HWW.set_chain_from_dsid_list(g.groups['HWW'], bkg_ntuple_dir)
 #HV.set_chain_from_dsid_list(g.groups['HV'], bkg_ntuple_dir)
@@ -98,7 +107,7 @@ higgs.set_chain_from_dsid_list(g.groups['higgs'], bkg_ntuple_dir)
 
 #signal.set_chain_from_dsid_list(g.groups['higgs_lfv'], signal_ntuple_dir)
 if run_fakes:
-    fakes.set_chain_from_dsid_list(data_dsids, fake_ntuple_dir)
+    fakes.set_chain_from_dsid_list(g.groups['data'], fake_ntuple_dir)
 
 SAMPLES = [s for s in SAMPLES if s.is_setup()]
 assert SAMPLES, "ERROR :: No samples are setup"
@@ -276,17 +285,15 @@ vars_to_plot_all = []
 ################################################################################
 PLOTS = []
 for region in region_ops:
-    vars_to_plot = vars_to_plot_all
+    vars_to_plot = list(vars_to_plot_all)
     if "wjets" in region:
-        #vars_to_plot += ['l_pt[0]','l_pt[1]', 'MET', 'l_eta[1]', 'dpt_ll', 'RelMET', 'MLL', 'nLJets', 'l_mT[1]', 'l_mT[0]','DphiLep1MET', 'DphiLep0MET']
-        vars_to_plot += ['l_pt[0]']
+        vars_to_plot += ['l_pt[0]','l_pt[1]', 'MET', 'l_eta[1]', 'dpt_ll', 'RelMET', 'MLL', 'nLJets', 'l_mT[0]','DphiLep1MET', 'DphiLep0MET']
     if "zjets" in region:
         #vars_to_plot += ['dR_Z_Fake:(ptll - l_pt[2])', 'ptll:(ptll - l_pt[2])', 'dR_Z_Fake:(ptll - l_pt[2])/ptll', '(ptll - l_pt[2])/ptll', '(ptll - l_pt[2] - MET)/ptll', 'lep_met_pT[2]', 'DphiLep2MET']
-        #vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
+        vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
         #vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
-        vars_to_plot += ['l_pt[2]']
     if "wzCR" in region:
-        vars_to_plot += ['l_pt[1]']
+        vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_pt[2]', 'l_mT[2]', 'MET', 'MLL']
     
     # Remove duplicate names
     vars_to_plot = list(set(vars_to_plot))

@@ -130,6 +130,6 @@ vgamma.color = color_palette['yellow'][1]
 wgamma = Background("wgamma", "W+gamma"); SAMPLES.append(wgamma)
 wgamma.color = color_palette['yellow'][1]
 
-# Z+gamma; SAMPLES.append(zgamma)
-zgamma = Background("zgamma", "Z+gamma")
+# Z+gamma; 
+zgamma = Background("zgamma", "Z+gamma"); SAMPLES.append(zgamma)
 zgamma.color = color_palette['yellow'][2]
