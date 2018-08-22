@@ -169,7 +169,7 @@ wjets_FF_VR += ' && fabs(lep_d0sigBSCorr[0]) < 15 && fabs(lep_d0sigBSCorr[1]) < 
 wjets_FF_VR += ' && fabs(lep_z0SinTheta[0]) < 15 && fabs(lep_z0SinTheta[1]) < 15'
 wjets_FF_VR += ' && MLL > 10'
 wjets_FF_VR += ' && nBJets==0' # reject top
-wjets_FF_VR += ' && MLL < 110'
+#wjets_FF_VR += ' && MLL < 110'
 wjets_FF_VR += ' && 40 < l_mT[0] && l_mT[0] < 110'
 #wjets_FF_VR += ' && 30 < MET && MET < 60' 
 wjets_FF_VR += ' && 20 < RelMET && RelMET < 75' 
@@ -224,7 +224,7 @@ if run_den:
 elif run_num:
     if run_zjets:
         region_ops += ['wzCR']
-        #region_ops += ['wzCR_eee', 'wzCR_emm','wzCR_mee', 'wzCR_mmm']
+        region_ops += ['wzCR_eee', 'wzCR_emm','wzCR_mee', 'wzCR_mmm']
         #region_ops += ['zjets_FF_CRnum_m']
         #region_ops += ['zjets_FF_CRnum_m', 'zjets_FF_CRnum_e']
         region_ops += ['zjets_FF_CRnum_eem', 'zjets_FF_CRnum_mmm']
@@ -291,9 +291,10 @@ for region in region_ops:
     if "zjets" in region:
         #vars_to_plot += ['dR_Z_Fake:(ptll - l_pt[2])', 'ptll:(ptll - l_pt[2])', 'dR_Z_Fake:(ptll - l_pt[2])/ptll', '(ptll - l_pt[2])/ptll', '(ptll - l_pt[2] - MET)/ptll', 'lep_met_pT[2]', 'DphiLep2MET']
         vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
-        #vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
+        vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
     if "wzCR" in region:
         vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_pt[2]', 'l_mT[2]', 'MET', 'MLL']
+        vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
     
     # Remove duplicate names
     vars_to_plot = list(set(vars_to_plot))

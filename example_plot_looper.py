@@ -245,7 +245,7 @@ if __name__ == '__main__':
                                 help='name of the config file')
         parser.add_argument("-s", "--suffix",
                                 default="",
-                                help='Suffix to prepend to output plot names')
+                                help='Suffix to append to output plot names')
         parser.add_argument("-o", "--outdir",
                                 default="./",
                                 help='name of the output directory to save plots.')
