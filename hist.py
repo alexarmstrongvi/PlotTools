@@ -181,6 +181,40 @@ class DataMCRatioHist1D(RatioHist1D) :
         nominalAsymErrorsNoSys.Delete()
         g_data.Delete()
 
+def make_stack_axis(plot):
+    hax = r.TH1F("axes", "", int(plot.nbins), plot.xmin, plot.xmax)
+    hax.SetMinimum(plot.ymin)
+    hax.SetMaximum(plot.ymax)
+    xax = hax.GetXaxis()
+    xax.SetTitle(plot.xlabel)
+    xax.SetTitleFont(42)
+    xax.SetLabelFont(42)
+    xax.SetLabelSize(0.035)
+    xax.SetTitleSize(0.048 * 0.85)
+    if plot.ptype == Types.ratio:
+        hax.GetXaxis().SetTitleOffset(-999)
+        hax.GetXaxis().SetLabelOffset(-999)
+    else:
+        xax.SetLabelOffset(1.15 * 0.02)
+        xax.SetTitleOffset(1.5 * xax.GetTitleOffset())
+
+    yax = hax.GetYaxis()
+    yax.SetTitle(plot.ylabel)
+    yax.SetTitleFont(42)
+    yax.SetLabelFont(42)
+    yax.SetTitleOffset(1.4)
+    yax.SetLabelOffset(0.013)
+    yax.SetLabelSize(1.2 * 0.035)
+    yax.SetTitleSize(0.055 * 0.85)
+
+    if plot.bin_labels and plot.ptype == Types.stack:
+        plot.set_bin_labels(hax)
+    if plot.rebin_bins:
+        new_bins = array('d', plot.rebin_bins)
+        hax_rebinned = hax.Rebin(len(new_bins)-1, 'axes_rebinned', new_bins)
+        hax.Delete()
+        hax = hax_rebinned
+    return hax
 
 class DataMCStackHist1D(HistBase):
     def __init__(self, plot, reg, YIELD_TBL, data, bkgds, sig=None):
@@ -200,7 +234,7 @@ class DataMCStackHist1D(HistBase):
         self.histos_for_leg = []
 
         self.make_stack_legend(plot, reg)
-        self.make_stack_axis(plot, reg)
+        self.axis = make_stack_axis(plot)
         self.add_stack_backgrounds(plot, reg, YIELD_TBL, bkgds)
         #self.add_stack_signals(plot, reg, sigs)
         self.add_stack_data(plot, reg, YIELD_TBL, data)
@@ -237,39 +271,6 @@ class DataMCStackHist1D(HistBase):
         # TODO: Incorporate signal legend
         self.leg_sig = pu.default_legend(xl=0.55, yl=0.6, xh=0.91, yh=0.71)
         self.leg_sig.SetNColumns(1)
-
-    def make_stack_axis(self, plot, reg):
-        self.axis = r.TH1F("axes", "", int(plot.nbins), plot.xmin, plot.xmax)
-        hax = self.axis #TODO: Remove relableing
-        hax.SetMinimum(plot.ymin)
-        hax.SetMaximum(plot.ymax)
-        xax = hax.GetXaxis()
-        xax.SetTitle(plot.xlabel)
-        xax.SetTitleFont(42)
-        xax.SetLabelFont(42)
-        xax.SetLabelSize(0.035)
-        xax.SetTitleSize(0.048 * 0.85)
-        if plot.ptype == Types.ratio:
-            hax.GetXaxis().SetTitleOffset(-999)
-            hax.GetXaxis().SetLabelOffset(-999)
-        else:
-            xax.SetLabelOffset(1.15 * 0.02)
-            xax.SetTitleOffset(1.5 * xax.GetTitleOffset())
-
-        yax = hax.GetYaxis()
-        yax.SetTitle(plot.ylabel)
-        yax.SetTitleFont(42)
-        yax.SetLabelFont(42)
-        yax.SetTitleOffset(1.4)
-        yax.SetLabelOffset(0.013)
-        yax.SetLabelSize(1.2 * 0.035)
-        yax.SetTitleSize(0.055 * 0.85)
-
-        if plot.bin_labels and plot.ptype == Types.stack:
-            plot.set_bin_labels(hax)
-        if plot.rebin_bins:
-            new_bins = array('d', plot.rebin_bins)
-            hax = hax.Rebin(len(new_bins)-1, 'axes', new_bins)
 
     def add_stack_backgrounds(self, plot, reg, YIELD_TBL, bkgds):
 
