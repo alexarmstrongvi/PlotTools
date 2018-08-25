@@ -4,16 +4,38 @@ sys.path.append('../..')
 import collections # OrderedDict
 
 class Region :
-    def __init__(self, name="", displayname="") :
+    def __init__(self, name="", displayname="", latexname="", cuts=None) :
+        
+        if not displayname: displayname = name
+        if not latexname: latexname = displayname
+        
         self.name = name
         self.displayname = displayname
-        self.tcut = None
+        self.latexname = latexname
+        self.tcut = cuts
+        self.compare_regions = []
+
+        # Deprecated        
         self.truth_fake_sel = None
         self.truth_bkg_sel = None
 
+
+        # Not yet implemented
         self.is_cutflow = False
         self.cutDict = collections.OrderedDict()
         self.cutFlow = []
+
+    def build_channel(self, name, displayname='', latexname='', cuts=''):
+
+        if not displayname: displayname = name
+        if not latexname: latexname = displayname
+        
+        name = "%s_%s" % (self.name, name)
+        displayname = "%s (%s)" % (self.displayname, displayname)
+        latexname = "%s (%s)" % (self.latexname, latexname)
+        cuts = "%s && (%s)" % (self.tcut, cuts)
+
+        return Region(name, displayname, latexname, cuts)
 
 
     def setCutFlow(self) :

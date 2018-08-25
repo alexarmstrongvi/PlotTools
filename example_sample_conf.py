@@ -62,7 +62,7 @@ signal.color = color_palette['green'][0]
 higgs = Background("higgs", "Higgs"); SAMPLES.append(higgs)
 higgs.color = color_palette['red'][0] 
 
-ggF_Htt = Background("ggF_Htt", "H#tau#tau (ggF)"); SAMPLES.append(ggF_Htt)
+ggF_Htt = Background("ggF_Htt", "H#tau#tau (ggF)", "$H\\rightarrow\\tau\\tau (ggF)$)"); SAMPLES.append(ggF_Htt)
 ggF_Htt.color = color_palette['red'][0] 
 VBF_Htt = Background("VBF_Htt", "H#tau#tau (VBF)"); SAMPLES.append(VBF_Htt)
 VBF_Htt.color = color_palette['red'][1] 
@@ -87,16 +87,16 @@ ttbarlep = Background("ttbarlep", "ttbarlep"); SAMPLES.append(ttbarlep)
 ttbarlep.color = color_palette['orange'][3] 
 
 # VV combined
-VV = Background("vv", "Diboson"); SAMPLES.append(VV)
+VV = Background("vv", "VV"); SAMPLES.append(VV)
 VV.color = color_palette['spring'][0]
 VV.scale_factor *= 1.05
 
 # VVV combined
-VVV = Background("vvv", "Triboson"); SAMPLES.append(VVV)
+VVV = Background("vvv", "VVV"); SAMPLES.append(VVV)
 VVV.color = color_palette['spring'][1] 
 
 # Z(->ll) + jets
-zll = Background("zll", "Z(->ll)+jets"); SAMPLES.append(zll)
+zll = Background("zll", "Z(->ll)+jets", "$Z(\\rightarrow\ell\ell)+$jets"); SAMPLES.append(zll)
 zll.color = color_palette['azure'][0] 
 
 zee = Background("zee", "Zee"); SAMPLES.append(zee)
@@ -105,7 +105,7 @@ zmumu = Background("zmumu", "Zmumu"); SAMPLES.append(zmumu)
 zmumu.color = color_palette['azure'][1] 
 
 # Ztt
-ztt = Background("ztt", "Z#tau#tau"); SAMPLES.append(ztt)
+ztt = Background("ztt", "Z#tau#tau","$Z(\\rightarrow\\tau\\tau)+$jets"); SAMPLES.append(ztt)
 ztt.color = color_palette['blue'][0] 
     
 ztt_sherpa = Background("ztt_sherpa", "Z#tau#tau (Sherpa 2.2.2)"); SAMPLES.append(ztt_sherpa)
@@ -123,13 +123,13 @@ wjets = Background("wjets", "W+jets"); SAMPLES.append(wjets)
 wjets.color = color_palette['yellow'][0]
 
 # V+gamma
-vgamma = Background("vgamma", "V+gamma"); SAMPLES.append(vgamma)
+vgamma = Background("vgamma", "V+#gamma"); SAMPLES.append(vgamma)
 vgamma.color = color_palette['yellow'][1]
 
 # W+gamma
-wgamma = Background("wgamma", "W+gamma"); SAMPLES.append(wgamma)
+wgamma = Background("wgamma", "W+#gamma","$W+\gamma$"); SAMPLES.append(wgamma)
 wgamma.color = color_palette['yellow'][1]
 
 # Z+gamma; 
-zgamma = Background("zgamma", "Z+gamma"); SAMPLES.append(zgamma)
+zgamma = Background("zgamma", "Z+gamma","$Z+\\gamma$"); SAMPLES.append(zgamma)
 zgamma.color = color_palette['yellow'][2]

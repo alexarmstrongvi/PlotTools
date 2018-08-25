@@ -16,6 +16,8 @@ import re
 from numbers import Number
 from math import sqrt
 from collections import OrderedDict, defaultdict
+from pdb import set_trace
+from tabulate import tabulate
 
 class UncFloat :
     precision = 2
@@ -32,8 +34,12 @@ class UncFloat :
         self.uncertainty = float(uncertainty)
 
     def __add__(self, other):
-        value = self.value + other.value
-        uncertainty = sqrt(self.uncertainty**2 + other.uncertainty**2)
+        if isinstance(other, Number):
+            value = self.value + other 
+            uncertainty = self.uncertainty
+        else:
+            value = self.value + other.value
+            uncertainty = sqrt(self.uncertainty**2 + other.uncertainty**2)
         return UncFloat(value, uncertainty)
     def __radd__(self, other):
         if other == 0:
@@ -41,22 +47,34 @@ class UncFloat :
         else:
             return self.__add__(other)
     def __sub__(self, other):
-        value = self.value - other.value
-        uncertainty = sqrt(self.uncertainty**2 + other.uncertainty**2)
+        if isinstance(other, Number):
+            value = self.value - other 
+            uncertainty = self.uncertainty
+        else:
+            value = self.value - other.value
+            uncertainty = sqrt(self.uncertainty**2 + other.uncertainty**2)
         return UncFloat(value, uncertainty)
     def __mul__(self, other):
-        value = self.value * other.value
-        rel_unc1 = self.uncertainty /abs(self.value)
-        rel_unc2 = other.uncertainty / abs(other.value)
-        rel_unc = sqrt(rel_unc1**2 + rel_unc2**2)
-        uncertainty = rel_unc * abs(value)
+        if isinstance(other, Number):
+            value = self.value * other 
+            uncertainty = self.uncertainty * other
+        else:
+            value = self.value * other.value
+            rel_unc1 = self.uncertainty /abs(self.value)
+            rel_unc2 = other.uncertainty / abs(other.value)
+            rel_unc = sqrt(rel_unc1**2 + rel_unc2**2)
+            uncertainty = rel_unc * abs(value)
         return UncFloat(value, uncertainty)
     def __div__(self, other):
-        value = self.value / other.value
-        rel_unc1 = self.uncertainty /abs(self.value)
-        rel_unc2 = other.uncertainty / abs(other.value)
-        rel_unc = sqrt(rel_unc1**2 + rel_unc2**2)
-        uncertainty = rel_unc * abs(value)
+        if isinstance(other, Number):
+            value = self.value / other 
+            uncertainty = self.uncertainty / other
+        else:
+            value = self.value / other.value
+            rel_unc1 = self.uncertainty /abs(self.value)
+            rel_unc2 = other.uncertainty / abs(other.value)
+            rel_unc = sqrt(rel_unc1**2 + rel_unc2**2)
+            uncertainty = rel_unc * abs(value)
         return UncFloat(value, uncertainty)
     def __lt__(self, other) :
         return self.value < other.value
@@ -96,6 +114,334 @@ class UncFloat :
             return True
         except ValueError:
             return False
+
+class TableLabel:
+    def __init__(self, name, display="", latex=""):
+        self.name = name
+        self.display = display
+        self.latex = latex
+
+        if not display: self.display = self.name
+        if not latex: self.latex = self.display 
+
+class YieldTbl:
+    precision = 2
+
+    def __init__(self):
+        
+        self.row_names = []
+        self.row_displaynames = []
+        self.row_latexnames = []
+        self.row_mc_flags = []
+        
+        self.col_names = []
+        self.col_displaynames = []
+        self.col_latexnames = []
+        self.common_column_prefix = ""
+        
+        self.table = []
+
+        self.column_formulas = []
+        self.row_formulas = []
+
+    def add_row(self, row_name, row_displayname = "", row_latexname="", mc=False):
+        display = row_displayname if row_displayname else row_name
+        latex = row_latexname if row_latexname else display
+
+        self.row_names.append(row_name)
+        self.row_displaynames.append(display)
+        self.row_latexnames.append(latex)
+        self.row_mc_flags.append(mc)
+
+        n_cols = len(self.table[0]) if len(self.table) else 1
+        row = [UncFloat(0,0) for x in range(n_cols)] 
+        self.table.append(row) 
+        
+
+    def add_column(self, col_name, col_displayname = "", col_latexname=""):
+        display = col_displayname if col_displayname else col_name
+        latex = col_latexname if col_latexname else display
+
+        self.col_names.append(col_name)
+        self.col_displaynames.append(display)
+        self.col_latexnames.append(latex)
+
+        for row in self.table:
+            row.append(UncFloat(0,0))        
+
+    def add_entry(self, row_name, col_name, val,
+                  error=None,
+                  row_displayname="",
+                  row_latexname="",
+                  col_displayname="",
+                  col_latexname="",
+                  mc = False
+                  ):
+        if not row_displayname: row_displayname = row_name
+        if not row_latexname: row_latexname = row_displayname
+        if not col_displayname: col_displayname = col_name
+        if not col_latexname: col_latexname = col_displayname
+        
+        if row_name not in self.row_names:
+            self.add_row(row_name, row_displayname, row_latexname, mc = mc)
+            if col_name not in self.col_names:
+                self.col_names.append(col_name)
+                self.col_displaynames.append(col_displayname)
+                self.col_latexnames.append(col_latexname)
+        
+        if col_name not in self.col_names:
+            self.add_column(col_name, col_displayname, col_latexname)
+
+        
+        try:
+            row_idx = self.row_names.index(row_name)
+            col_idx = self.col_names.index(col_name)
+            self.table[row_idx][col_idx] = UncFloat(val, error)
+        except ValueError:
+            print "ERROR: row %s and column %s are not found in this yield table" % (row_name, col_name)
+            print "INFO: Current rows:", self.row_names 
+            print "INFO: Current columns:", self.col_names 
+
+    def get(row_name, col_name):
+        try:
+            row_idx = self.row_names.index(row_name)
+            col_idx = self.col_names.index(col_name)
+            return table[row_idx][col_idx]
+        except ValueError:
+            print "ERROR: row %s and column %s are not found in this yield table" % (row_name, col_name)
+            print "INFO: Current rows:", self.row_names 
+            print "INFO: Current columns:", self.col_names 
+
+        
+    def get_column(self, col_name):
+        col_idx = self.col_names.index(col_name)
+        column = []
+        for row in self.table:
+            column.append(row[col_idx])
+        return column
+
+    def add_column_formula(self, name, formula, displayname='', latexname=''):
+        label = TableLabel(name, displayname, latexname)
+        self.column_formulas.append((label, formula))
+        
+    def add_row_formula(self, name, formula, displayname='', latexname=''):
+        label = TableLabel(name, displayname, latexname)
+        self.row_formulas.append((label, formula))
+    
+    def apply_row_formulas(self):
+        new_rows = []
+        for formula_pair in self.row_formulas:
+            # Apply formula
+            tmp_row = self.apply_row_formula(formula_pair[1], formula_pair[0])
+            new_rows.append(tmp_row)
+        
+        # Add formulas to original table
+        for r_idx, row in enumerate(new_rows):
+            for c_idx, entry in enumerate(row):
+                if isinstance(entry, float):
+                    value, error = entry, 0
+                else:
+                    value, error = entry.value, entry.uncertainty
+
+                row_names = self.row_formulas[r_idx][0]
+                mc = True if row_names.display == 'mc_total' else False
+                self.add_entry(row_name=row_names.name,
+                               col_name=self.col_names[c_idx],
+                               val=value,
+                               error=error,
+                               row_displayname = row_names.display,
+                               row_latexname = row_names.latex,
+                               col_displayname = self.col_displaynames[c_idx],
+                               col_latexname = self.col_latexnames[c_idx],
+                               mc = mc
+                               ) 
+    
+    def apply_row_formula(self, formula, labels):
+        # Get rows from formula
+        rows = self.extract_elements_from_formula(formula)
+        rows = list(set(rows))
+
+        # Replace formula keywords
+        for row in rows:
+            replace_str = self.replace_formula_keywords(row)
+            formula = re.sub(r"\b%s\b"%row, replace_str, formula)
+        
+        # Replace names in formula with values
+        rows = self.extract_elements_from_formula(formula)
+        rows = list(set(rows))
+        for row in rows:
+            try:
+                idx = self.row_names.index(row)
+                replace_str = "col[%d]" % idx
+                formula = re.sub(r"\b%s\b"%row, replace_str, formula)
+            except ValueError:
+                print "ERROR :: %s not found in row names" % row
+                print "INFO :: Row Names:", self.row_names
+                formula = "float('NaN')"
+        
+        new_row = []
+        #Idx label must agree with label used in formula string
+        for col_name in self.col_names:
+            col = self.get_column(col_name)
+            try:
+                result = eval(formula)
+            except ZeroDivisionError:
+                result = float('inf')
+            except NameError, err:
+                print "ERROR :: ", err
+                print "INFO :: Row names = ", self.row_names
+                result = float('NaN')
+            new_row.append(result)
+        
+        return new_row
+
+    def apply_column_formulas(self):
+        new_columns = []
+        for formula_pair in self.column_formulas:
+            # Apply formula
+            tmp_col = self.apply_column_formula(formula_pair[1], formula_pair[0])
+
+            # Store new column
+            if not new_columns: new_columns = tmp_col
+            else:
+                for entry, row in zip(tmp_col, new_columns):
+                    row.append(entry[0])
+        
+        # Add formulas to original table
+        for r_idx, row in enumerate(new_columns):
+            for f_idx, entry in enumerate(row):
+                if isinstance(entry, float):
+                    value, error = entry, 0
+                else:
+                    value, error = entry.value, entry.uncertainty
+
+                col_names = self.column_formulas[f_idx][0]
+                self.add_entry(row_name=self.row_names[r_idx],
+                               col_name=col_names.name,
+                               val=value,
+                               error=error,
+                               row_displayname = self.row_displaynames[r_idx],
+                               row_latexname = self.row_latexnames[r_idx],
+                               col_displayname = col_names.display,
+                               col_latexname = col_names.latex 
+                               ) 
+    def mc_sample_names(self):
+        mc_samples = []
+        for row_name, mc_flag in zip(self.row_names, self.row_mc_flags):
+            if mc_flag:
+                mc_samples.append(row_name)
+        return mc_samples
+    
+    def replace_formula_keywords(self, keyword):
+        if not self.common_column_prefix:
+            self.common_column_prefix = os.path.commonprefix(self.col_names).strip()
+        if keyword == "MC":
+            keyword = "(" + "+".join(self.mc_sample_names()) + ")"
+        elif keyword == "BASE_REG":
+            keyword = self.common_column_prefix
+        elif keyword not in self.col_names:
+            new_kw = self.common_column_prefix + "_" + keyword
+            if new_kw in self.col_names: 
+                keyword = new_kw 
+            else:
+                # Error raised elsewhere
+                pass
+
+        return keyword
+
+    def extract_elements_from_formula(self, formula):
+        elements = re.sub("(\+|\-|\)|\(|\*|\.|[0-9]|\/)"," ", formula)
+        elements = [c.strip() for c in elements.split()]
+        assert all(s.replace("_","").isalpha() for s in elements), (
+            "ERROR :: Unacceptable formula format %s -> %s" % (formula, elements))
+        return elements
+
+    def apply_column_formula(self, formula, labels):
+        # Get columns from formula
+        columns = self.extract_elements_from_formula(formula)
+        columns = list(set(columns))
+
+        # Replace formula keywords
+        for col in columns:
+            replace_str = self.replace_formula_keywords(col)
+            formula = re.sub(r"\b%s\b"%col, replace_str, formula)
+        
+        # Replace names in formula with values
+        columns = self.extract_elements_from_formula(formula)
+        columns = list(set(columns))
+        for col in columns:
+            try:
+                idx = self.col_names.index(col)
+                replace_str = "row[%d]" % idx
+                formula = re.sub(r"\b%s\b"%col, replace_str, formula)
+            except ValueError:
+                print "WARNING :: Formula column not stored:", col
+                print "INFO :: Col names = ", self.col_names
+                formula = "float('NaN')"
+        
+        new_column = []
+        for row in self.table:
+            try:
+                result = eval(formula)
+            except ZeroDivisionError:
+                result = float('inf')
+            new_column.append([result])
+        
+        return new_column
+
+    def Print(self, latex=False, mc_data_fmt=False):
+        print_str = self.print_str(latex)
+        # Arrange rows
+        if mc_data_fmt:
+            print_lst = print_str.split("\n")
+            if latex:
+                end_tabular = print_lst.pop()
+                hline = "\hline"
+                n_header_rows = 4
+            else:
+                hline = print_lst[0]
+                n_header_rows = 3
+            moved_lines = 0
+            
+            for idx in range(len(self.row_mc_flags)):
+                if self.row_mc_flags[idx]: continue
+                line_to_move = idx + n_header_rows - moved_lines
+                print_lst.append(print_lst.pop(line_to_move))
+                moved_lines += 1
+
+            print_lst.append(hline)
+            if latex: 
+                print_lst.insert(4,"\hline")
+                print_lst.insert(0,"\\resizebox{\\textwidth}{!}{")
+                print_lst.append(end_tabular)
+                print_lst.append("}")
+            print_str = "\n".join(print_lst)
+            
+        print print_str
+    def save_table(self, latex=False):
+        pass
+
+    def print_str(self, latex=False, mc_data_fmt=False):
+        if latex:
+            col_names = self.col_latexnames
+            row_names = self.row_latexnames
+            table_format = 'latex_raw'
+            str_f = lambda x : str(x).replace("+/-","$\pm$")
+        else:
+            col_names = self.col_displaynames
+            row_names = self.row_displaynames
+            table_format = 'psql'
+            str_f = str
+        
+            
+        print_table = []
+        for idx, row in enumerate(self.table):
+            print_table.append([row_names[idx]] + map(str_f, row))
+        return tabulate(print_table, headers=col_names, tablefmt=table_format)
+
+
+
+
 
 class YieldTable :
     precision = 2

@@ -30,9 +30,12 @@ class Sample :
     input_file_treename = 'Unset'
     check_for_duplicates_flag = False
 
-    def __init__(self, name = "", displayname = ""):
+    def __init__(self, name = "", displayname = "", latexname = ""):
+        if not displayname: displayname = name
+        if not latexname: latexname = displayname
         self.name = name
         self.displayname = displayname
+        self.latexname = latexname
         self.file_path = ""
         self.color = r.kRed
         self.tree = None
@@ -181,7 +184,7 @@ class Sample :
             new_file_path.Write()
             new_n_entries = r.TNamed("n_entries",n_entries)
             new_n_entries.Write()
-
+        
         rfile.Close()
 
     # Comparison
@@ -244,8 +247,8 @@ class MCsample(Sample):
     weight_str = ''
     scale_factor = 1.0
 
-    def __init__(self, name = "", displayname = ""):
-        Sample.__init__(self, name, displayname)
+    def __init__(self, name = "", displayname = "", latexname=""):
+        Sample.__init__(self, name, displayname, latexname)
         self.dsid = ""
         self.line_style = 1
         self.fill_style = 0
@@ -258,16 +261,16 @@ class MCsample(Sample):
         print 'MC Sample "%s" (tree %s)'%(self.displayname, self.name)
 
 class Background(MCsample) :
-    def __init__(self, name = "", displayname = "") :
-        MCsample.__init__(self, name, displayname)
+    def __init__(self, name = "", displayname = "", latexname="") :
+        MCsample.__init__(self, name, displayname, latexname)
         self.is_signal = False
 
     def Print(self) :
         print 'Background "%s" (tree %s)'%(self.displayname, self.name)
 
 class Signal(MCsample) :
-    def __init__(self, name = "", displayname ="") :
-        MCsample.__init__(self, name, displayname)
+    def __init__(self, name = "", displayname ="", latexname="") :
+        MCsample.__init__(self, name, displayname, latexname)
         self.is_signal = True
 
     def Print(self) :
