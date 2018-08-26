@@ -126,6 +126,7 @@ class TableLabel:
 
 class YieldTbl:
     precision = 2
+    write_to_latex = False
 
     def __init__(self):
         
@@ -390,7 +391,32 @@ class YieldTbl:
         return new_column
 
     def Print(self, latex=False, mc_data_fmt=False):
-        print_str = self.print_str(latex)
+        print self.print_str(latex, mc_data_fmt)
+    
+    def save_table(self, save_path, latex=False, mc_data_fmt=False):
+        with open(save_path, "w") as ofile:
+            ofile.write(self.print_str(latex, mc_data_fmt))
+
+    def print_str(self, latex=False, mc_data_fmt=False):
+        if latex:
+            col_names = self.col_latexnames
+            row_names = self.row_latexnames
+            table_format = 'latex_raw'
+            str_f = lambda x : str(x).replace("+/-","$\pm$")
+        else:
+            col_names = self.col_displaynames
+            row_names = self.row_displaynames
+            table_format = 'psql'
+            str_f = str     
+            
+        print_table = []
+        for idx, row in enumerate(self.table):
+            print_table.append([row_names[idx]] + map(str_f, row))
+
+        print_str = tabulate(print_table, headers=col_names, tablefmt=table_format)
+        return self.format_print_str(print_str, latex, mc_data_fmt)
+
+    def format_print_str(self, print_str, latex=False, mc_data_fmt=False):
         # Arrange rows
         if mc_data_fmt:
             print_lst = print_str.split("\n")
@@ -412,33 +438,11 @@ class YieldTbl:
             print_lst.append(hline)
             if latex: 
                 print_lst.insert(4,"\hline")
-                print_lst.insert(0,"\\resizebox{\\textwidth}{!}{")
+                print_lst.insert(0,"\\adjustbox{max height=\dimexpr\\textheight-6cm\\relax, max width=\\textwidth}{")
                 print_lst.append(end_tabular)
                 print_lst.append("}")
             print_str = "\n".join(print_lst)
-            
-        print print_str
-    def save_table(self, latex=False):
-        pass
-
-    def print_str(self, latex=False, mc_data_fmt=False):
-        if latex:
-            col_names = self.col_latexnames
-            row_names = self.row_latexnames
-            table_format = 'latex_raw'
-            str_f = lambda x : str(x).replace("+/-","$\pm$")
-        else:
-            col_names = self.col_displaynames
-            row_names = self.row_displaynames
-            table_format = 'psql'
-            str_f = str
-        
-            
-        print_table = []
-        for idx, row in enumerate(self.table):
-            print_table.append([row_names[idx]] + map(str_f, row))
-        return tabulate(print_table, headers=col_names, tablefmt=table_format)
-
+        return print_str
 
 
 

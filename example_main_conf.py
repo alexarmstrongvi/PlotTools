@@ -29,8 +29,8 @@ run_fakes = False
 add_truth_den = False
 add_truth_num = False
 run_den = False
-run_num = True
-run_zjets = True
+run_num = False
+run_zjets = False
 run_base = False
 
 assert run_den != run_num
@@ -76,7 +76,7 @@ top.set_chain_from_dsid_list(g.groups['top'], bkg_ntuple_dir)
 #stop.set_chain_from_dsid_list(g.groups['singletop'], bkg_ntuple_dir)
 #wtop.set_chain_from_dsid_list(g.groups['Wt'], bkg_ntuple_dir)
 
-ttbarlep.set_chain_from_dsid_list(g.groups['ttbar_lep'], bkg_ntuple_dir)
+ttbarX.set_chain_from_dsid_list(g.groups['ttbarX'], bkg_ntuple_dir)
 
 VV.set_chain_from_dsid_list(g.groups['VV'], bkg_ntuple_dir)
 
@@ -138,45 +138,44 @@ fakelep2 = '(l_truthClass[2] <= 0 || 2 < l_truthClass[2])'
 prompt_truth = " && ".join([promptlep0, promptlep1, promptlep2])
 fake_truth = " && ".join([promptlep0, promptlep1, fakelep2])
 
-if add_truth_num:
+if run_fakes:
+    zjets_FF_CR += " && (nLepID == 2 || !isMC || %s)" % prompt_truth
+elif add_truth_num:
     zjets_FF_CR += " && (!isMC || %s)" % prompt_truth
 if add_truth_den:
     zjets_FF_CR += " && (!isMC || %s)" % prompt_truth
-if run_fakes:
-    zjets_FF_CR += " && (nLepID == 2 || !isMC || %s)" % prompt_truth
-    #zjets_FF_CR += ' && (!isMC || nLepID == 2 || (0 < l_truthClass[0] && l_truthClass[0] <= 2))' #Prompt Leading Lepton
-    #zjets_FF_CR += ' && (!isMC || nLepID == 2 || (0 < l_truthClass[1] && l_truthClass[1] <= 2))' #Prompt Subleading Lepton
-    #zjets_FF_CR += ' && (!isMC || nLepID == 2 || (0 < l_truthClass[2] && l_truthClass[2] <= 2))' #Prompt Probe Lepton
-#if add_truth_den or add_truth_num:
-#    zjets_FF_CR += ' && (!isMC || (0 < l_truthClass[0] && l_truthClass[0] <= 2))' #Prompt Leading Lepton
-#    zjets_FF_CR += ' && (!isMC || (0 < l_truthClass[1] && l_truthClass[1] <= 2))' #Prompt Subleading Lepton
-#    if add_truth_num:
-#        zjets_FF_CR += ' && (!isMC || (0 < l_truthClass[2] && l_truthClass[2] <= 2))' #Prompt Probe Lepton
-#    else:
-#        zjets_FF_CR += ' && (!isMC || (l_truthClass[2] <= 0 || 2 < l_truthClass[2]))' #Fake Probe Lepton
 
 REGIONS.append(Region('zjets_FF_CR', 'Z(->ll)+jets','$Z(\\rightarrow\ell\ell)+\\text{jets}$'))
 REGIONS[-1].tcut = zjets_FF_CR
 base_reg = REGIONS[-1]
 
-REGIONS.append(base_reg.build_channel('num_e', 'll + ID e', '$\ell\ell$ + ID $e$', 'l_flav[2]==0'))
-base_reg_e = REGIONS[-1]
-if not run_fakes:
-    base_reg_e.compare_regions.append(base_reg_e.build_channel('prompt', 'Prompt', cuts = prompt_truth))
-    base_reg_e.compare_regions.append(base_reg_e.build_channel('fake', 'Fake', cuts = fake_truth))
+for num_den, id_aid in zip(["num","den"],['ID','anti-ID']):
 
-REGIONS.append(base_reg.build_channel('num_m', 'll + ID m', '$\ell\ell$ + ID $\mu$', 'l_flav[2]==1'))
-REGIONS.append(base_reg.build_channel('num_eee', 'ee + ID e', '$ee$ + ID $e$', 'dilep_flav==2 && l_flav[2]==0'))
-REGIONS.append(base_reg.build_channel('num_mme', 'mm + ID e', '$mm$ + ID $e$', 'dilep_flav==3 && l_flav[2]==0'))
-REGIONS.append(base_reg.build_channel('num_eem', 'ee + ID m', '$ee$ + ID $\mu$', 'dilep_flav==2 && l_flav[2]==1'))
-REGIONS.append(base_reg.build_channel('num_mmm', 'mm + ID m', '$mm$ + ID $\mu$', 'dilep_flav==3 && l_flav[2]==1'))
-REGIONS.append(base_reg.build_channel('den_e', 'll + anti-ID e', '$\ell\ell$ + anti-ID $e$', 'l_flav[2]==0'))
-REGIONS.append(base_reg.build_channel('den_m', 'll + anti-ID m', '$\ell\ell$ + anti-ID $\mu$', 'l_flav[2]==1'))
-REGIONS.append(base_reg.build_channel('den_eee', 'ee + anti-ID e', '$ee$ + anti-ID $e$', 'dilep_flav==2 && l_flav[2]==0'))
-REGIONS.append(base_reg.build_channel('den_mme', 'mm + anti-ID e', '$mm$ + anti-ID $e$', 'dilep_flav==3 && l_flav[2]==0'))
-REGIONS.append(base_reg.build_channel('den_eem', 'ee + anti-ID m', '$ee$ + anti-ID $\mu$', 'dilep_flav==2 && l_flav[2]==1'))
-REGIONS.append(base_reg.build_channel('den_mmm', 'mm + anti-ID m', '$mm$ + anti-ID $\mu$', 'dilep_flav==3 && l_flav[2]==1'))
-
+    REGIONS.append(base_reg.build_channel(num_den+'_e', 'll + ID e', '$\ell\ell$ + ID $e$', 'l_flav[2]==0'))
+    base_reg_e = REGIONS[-1]
+    REGIONS.append(base_reg.build_channel(num_den+'_m', 'll + ID m', '$\ell\ell$ + ID $\mu$', 'l_flav[2]==1'))
+    base_reg_m = REGIONS[-1]
+    REGIONS.append(base_reg.build_channel(num_den+'_eee', 'ee + %s e'%id_aid, '$ee$ + %s $e$'%id_aid, 'dilep_flav==2 && l_flav[2]==0'))
+    base_reg_eee = REGIONS[-1]
+    REGIONS.append(base_reg.build_channel(num_den+'_mme', 'mm + %s e'%id_aid, '$mm$ + %s $e$'%id_aid, 'dilep_flav==3 && l_flav[2]==0'))
+    base_reg_mme = REGIONS[-1]
+    REGIONS.append(base_reg.build_channel(num_den+'_eem', 'ee + %s m'%id_aid, '$ee$ + %s $\mu$'%id_aid, 'dilep_flav==2 && l_flav[2]==1'))
+    base_reg_eem = REGIONS[-1]
+    REGIONS.append(base_reg.build_channel(num_den+'_mmm', 'mm + %s m'%id_aid, '$mm$ + %s $\mu$'%id_aid, 'dilep_flav==3 && l_flav[2]==1'))
+    base_reg_mmm = REGIONS[-1]
+    if not (run_fakes or add_truth_den or add_truth_num):
+        base_reg_e.compare_regions.append(base_reg_e.build_channel('prompt', 'Prompt', cuts = prompt_truth))
+        base_reg_e.compare_regions.append(base_reg_e.build_channel('fake', 'Fake', cuts = fake_truth))
+        base_reg_m.compare_regions.append(base_reg_m.build_channel('prompt', 'Prompt', cuts = prompt_truth))
+        base_reg_m.compare_regions.append(base_reg_m.build_channel('fake', 'Fake', cuts = fake_truth))
+        base_reg_eee.compare_regions.append(base_reg_eee.build_channel('prompt', 'Prompt', cuts = prompt_truth))
+        base_reg_eee.compare_regions.append(base_reg_eee.build_channel('fake', 'Fake', cuts = fake_truth))
+        base_reg_mme.compare_regions.append(base_reg_mme.build_channel('prompt', 'Prompt', cuts = prompt_truth))
+        base_reg_mme.compare_regions.append(base_reg_mme.build_channel('fake', 'Fake', cuts = fake_truth))
+        base_reg_eem.compare_regions.append(base_reg_eem.build_channel('prompt', 'Prompt', cuts = prompt_truth))
+        base_reg_eem.compare_regions.append(base_reg_eem.build_channel('fake', 'Fake', cuts = fake_truth))
+        base_reg_mmm.compare_regions.append(base_reg_mmm.build_channel('prompt', 'Prompt', cuts = prompt_truth))
+        base_reg_mmm.compare_regions.append(base_reg_mmm.build_channel('fake', 'Fake', cuts = fake_truth))
 
 num_den_list = ['num', 'den']
 chan_dict = {'eee' : ['ee','e','Z_dilep_flav==2 && l_flav[2]==0'],
@@ -208,11 +207,27 @@ wjets_FF_VR += ' && 40 < l_mT[0] && l_mT[0] < 110'
 wjets_FF_VR += ' && 20 < RelMET && RelMET < 75' 
 wjets_FF_VR += ' && 2.0 < DphiLep0MET'
 
-wjets_emu_FF_VR = '&& dpt_ll > 15'
+wjets_emu_FF_VR = 'dpt_ll > 15'
 wjets_emu_FF_VR += '&& 2.2 < DphiLep0MET'
+
+wjets_mue_FF_VR = '1'
+
 #wjets_FF_VR += ' && nLJets <= 1'
 #wjets_FF_VR += ' && n_jets == 0'
 #wjets_FF_VR += ' && n_jets == 1'
+
+promptlep0 = '(0 < l_truthClass[0] && l_truthClass[0] <= 2)' 
+promptlep1 = '(0 < l_truthClass[1] && l_truthClass[1] <= 2)'
+fakelep1 = '(l_truthClass[1] <= 0 || 2 < l_truthClass[1])'
+prompt_truth = " && ".join([promptlep0, promptlep1])
+fake_truth = " && ".join([promptlep0, fakelep1])
+
+if run_fakes:
+    wjets_FF_VR += " && (nLepID == 2 || !isMC || %s)" % prompt_truth
+elif add_truth_num:
+    wjets_FF_VR += " && (!isMC || %s)" % prompt_truth
+if add_truth_den:
+    wjets_FF_VR += " && (!isMC || %s)" % prompt_truth
 
 if add_truth_den or add_truth_num:
     wjets_FF_VR += ' && (!isMC || (0 < l_truthClass[0] && l_truthClass[0] <= 2))' #Prompt Leading Lepton
@@ -221,8 +236,19 @@ if add_truth_den or add_truth_num:
     else:
         wjets_FF_VR += ' && (!isMC || (l_truthClass[1] <= 0 || 2 < l_truthClass[1]))' #Fake Probe Lepton
 
-REGIONS.append(Region('wjets_FF_VR', 'wjets FF VR'))
+REGIONS.append(Region('wjets_FF_VR', 'W+jets FF VR'))
 REGIONS[-1].tcut = wjets_FF_VR
+base_reg = REGIONS[-1]
+for num_den, id_aid in zip(["num","den"],['ID','anti-ID']):
+    REGIONS.append(base_reg.build_channel(num_den+'_emu', 'ID e + %s m'%id_aid, 'ID $e$ + %s $\mu$'%id_aid, wjets_emu_FF_VR+' && '+emu))
+    base_reg_emu = REGIONS[-1]
+    REGIONS.append(base_reg.build_channel(num_den+'_mue', 'ID m + %s e'%id_aid, 'ID $\mu$ + %s $e$'%id_aid, wjets_mue_FF_VR+' && '+mue))
+    base_reg_mue = REGIONS[-1]
+    if not (run_fakes or add_truth_den or add_truth_num):
+        base_reg_emu.compare_regions.append(base_reg_emu.build_channel('prompt', 'Prompt', cuts = prompt_truth))
+        base_reg_emu.compare_regions.append(base_reg_emu.build_channel('fake', 'Fake', cuts = fake_truth))
+        base_reg_mue.compare_regions.append(base_reg_mue.build_channel('prompt', 'Prompt', cuts = prompt_truth))
+        base_reg_mue.compare_regions.append(base_reg_mue.build_channel('fake', 'Fake', cuts = fake_truth))
 
 REGIONS.append(Region('wjets_FF_VRden_emu', 'wjets FF VR (anti-ID mu)'))
 REGIONS[-1].tcut = wjets_FF_VR + wjets_emu_FF_VR + ' && ' + emu
@@ -248,21 +274,20 @@ region_ops = []
 if run_den:
     if run_zjets:
         #region_ops += ['zjets_FF_CRden_eee'] # Test Region
-        #region_ops += ['zjets_FF_CRden_m', 'zjets_FF_CRden_e']
-        region_ops += ['zjets_FF_CRden_eem', 'zjets_FF_CRden_mmm']
-        region_ops += ['zjets_FF_CRden_eee', 'zjets_FF_CRden_mme']
+        region_ops += ['zjets_FF_CR_den_m', 'zjets_FF_CR_den_e']
+        region_ops += ['zjets_FF_CR_den_eem', 'zjets_FF_CR_den_mmm']
+        region_ops += ['zjets_FF_CR_den_eee', 'zjets_FF_CR_den_mme']
     if run_base:
-        region_ops += ['wjets_FF_VRden_emu', 'wjets_FF_VRden_mue']
+        region_ops += ['wjets_FF_VR_den_emu', 'wjets_FF_VR_den_mue']
 elif run_num:
     if run_zjets:
         #region_ops += ['wzCR']
         #region_ops += ['wzCR_eee', 'wzCR_emm','wzCR_mee', 'wzCR_mmm']
-        region_ops += ['zjets_FF_CR_num_e']
-        #region_ops += ['zjets_FF_CRnum_m', 'zjets_FF_CRnum_e']
-        #region_ops += ['zjets_FF_CRnum_eem', 'zjets_FF_CRnum_mmm']
-        #region_ops += ['zjets_FF_CRnum_eee', 'zjets_FF_CRnum_mme']
+        region_ops += ['zjets_FF_CR_num_m', 'zjets_FF_CR_num_e']
+        region_ops += ['zjets_FF_CR_num_eem', 'zjets_FF_CR_num_mmm']
+        region_ops += ['zjets_FF_CR_num_eee', 'zjets_FF_CR_num_mme']
     if run_base:
-        region_ops += ['wjets_FF_VRnum_emu', 'wjets_FF_VRnum_mue']
+        region_ops += ['wjets_FF_VR_num_emu', 'wjets_FF_VR_num_mue']
 else:
     #region_ops += ['zjets_FF_CR']
     region_ops += ['zCR']
@@ -276,10 +301,21 @@ REGIONS = [x for x in REGIONS if x.name in region_ops]
 #######################################
 # Yield Table
 from PlotTools.YieldTable import YieldTable, YieldTbl
+YieldTbl.write_to_latex = True
 YLD_TABLE = YieldTbl()
-YLD_TABLE.add_column_formula(name="other",displayname="Other", formula="BASE_REG - prompt - fake")
 YLD_TABLE.add_row_formula(name="mc_total",displayname="MC Total", formula="MC")
 YLD_TABLE.add_row_formula(name="data_mc_ratio",displayname="Data/MC", formula="data/MC")
+if not (run_fakes or add_truth_den or add_truth_num):
+    YLD_TABLE.add_column_formula(name="other",displayname="Other", formula="BASE_REG - prompt - fake")
+if run_zjets and not run_fakes:
+    YLD_TABLE.add_row_formula(name="zjets_mc_ratio",displayname="Zll/MC", formula="zll/MC")
+    YLD_TABLE.add_row_formula(name="vv_mc_ratio",displayname="VV/MC", formula="vv/MC")
+if run_base and not run_fakes:
+    YLD_TABLE.add_row_formula(name="wjets_mc_ratio",displayname="W+Jets/MC", formula="wjets/MC")
+    YLD_TABLE.add_row_formula(name="nonwjets_data_ratio",displayname="(MC-W+Jets)/Data", formula="(MC-wjets)/data")
+if run_fakes:
+    YLD_TABLE.add_row_formula(name="fakes_mc_ratio",displayname="Fakes/MC", formula="fakes/MC")
+    YLD_TABLE.add_row_formula(name="fakes_data_ratio",displayname="Fakes/Data", formula="fakes/data")
 
 
 YIELD_TBL = YieldTable()

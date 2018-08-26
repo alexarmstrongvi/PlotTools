@@ -83,8 +83,8 @@ stop = Background("st", "Single top"); SAMPLES.append(stop)
 stop.color = color_palette['orange'][1] 
 wtop = Background("wt", "Wt"); SAMPLES.append(wtop)
 wtop.color = color_palette['orange'][2] 
-ttbarlep = Background("ttbarlep", "ttbarlep"); SAMPLES.append(ttbarlep)
-ttbarlep.color = color_palette['orange'][3] 
+ttbarX = Background("ttbarX", "t#bar{t}+X","$t\\bar{t}+X$"); SAMPLES.append(ttbarX)
+ttbarX.color = color_palette['orange'][3] 
 
 # VV combined
 VV = Background("vv", "VV"); SAMPLES.append(VV)

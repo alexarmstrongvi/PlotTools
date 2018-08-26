@@ -4,7 +4,7 @@ import time
 import importlib
 from YieldTable import YieldTbl, UncFloat
 from math import sqrt
-from global_variables import event_list_dir, plots_dir
+from global_variables import event_list_dir, plots_dir, yield_tbl_dir
 from copy import deepcopy
 
 # Root data analysis framework
@@ -29,7 +29,8 @@ def main():
 
         yld_table = deepcopy(YLD_TABLE)
         ########################################################################
-        print "Setting EventLists for %s"%reg.name
+        print "Setting EventLists for %s"%reg.name,
+        print "(+%d comparison regions)"%len(reg.compare_regions) if len(reg.compare_regions) else ""
         for sample in SAMPLES :
             weight_var = sample.weight_str if sample.isMC else ""
             scale_factor = sample.scale_factor if sample.isMC else 1
@@ -72,10 +73,14 @@ def main():
         yld_table.apply_column_formulas()
         yld_table.apply_row_formulas()
 
-        #if YieldTbl.write_to_latex:
-        #    yld_table.save_table(tablefmt='latex')
+        if yld_table.write_to_latex:
+            name = reg.name
+            if args.suffix: name += "_" + args.suffix
+            save_path = os.path.join(yield_tbl_dir, name + ".tex")
+            print "Saving yield table to", save_path
+            yld_table.save_table(save_path, latex=True, mc_data_fmt=True)
 
-        yld_table.Print(latex=True, mc_data_fmt=True)
+        yld_table.Print(mc_data_fmt=True)
 
 def get_yield_and_error(ttree, weight_var="", scale=1, dummy_var="isMC"):
     error = r.Double(0.0)
