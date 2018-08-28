@@ -40,7 +40,7 @@ class HistBase:
         #TODO: Get python to get all class variables that inherit fromTObject
         #      (e.g. use self.__class__.__dict__)
         raise NotImplementedError()
-    
+
     def clear(self):
         # Delete all underlying root objects
         # -
@@ -86,8 +86,24 @@ class RegionCompare1D(HistBase):
         self.hists = []
 
         self.axis = make_stack_axis(plot)
+        self.leg = make_basic_legend(plot)
         for reg in regions:
+            print "Setting EventLists for %s"%reg.name
+            cut = r.TCut(reg.tcut)
+            for sample in SAMPLES :
+                list_name = "list_" + reg.name + "_" + sample.name
+                sample.set_event_list(cut, list_name, event_list_dir)
+                draw
+                hist = make_basic_hist(plot, sample, region)
+                self.leg.AddEntry(hist, reg.displayname, "l")
+                self.hists.append(hist)
 
+    def list_of_root_objects(self):
+        return [
+            self.leg,
+            self.axis,
+            self.hists
+        ]
 
 
 class DataMCRatioHist1D(RatioHist1D) :
@@ -645,3 +661,39 @@ class Hist2D(HistBase) :
         zax.SetTitleOffset(1.5)
         zax.SetLabelOffset(0.013)
         zax.SetLabelSize(1.2 * 0.035)
+
+def make_basic_hist(plot, sample, reg, apply_cuts=False):
+    var_name = pu.strip_for_root_name(plot.variable)
+    h_name = "h_"+reg.name+'_'+sample.name+"_"+ var_name
+    h = pu.th1d(h_name, "", int(plot.nbins),
+                plot.xmin, plot.xmax,
+                plot.xlabel, plot.ylabel)
+
+    h.SetLineColor(sample.color)
+    h.Sumw2
+
+    # Draw final histogram (i.e. selections and weights applied)
+    if plot.variable != mc_sample.weight_str:
+        weight_str = "%s * %s"%(mc_sample.weight_str, str(mc_sample.scale_factor))
+    else:
+        weight_str = 1
+
+    if apply_cuts:
+        weight = "(%s) * %s"%(reg.tcut, weight_str)
+        draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
+    else:
+        weight = weight_str
+        draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
+    sample.tree.Draw(draw_cmd, weight, "goff")
+    return h
+
+def make_basic_legend(self, plot):
+    if plot.leg_is_left :
+        leg = pu.default_legend(xl=0.2,yl=0.7,xh=0.47, yh=0.87)
+    elif plot.leg_is_bottom_right :
+        leg = pu.default_legend(xl=0.7, yl=0.17,xh=0.97,yh=0.41)
+    elif plot.leg_is_bottom_left :
+        leg = pu.default_legend(xl=0.2,yl=0.2,xh=0.47,yh=0.37)
+    else :
+        leg = pu.default_legend(xl=0.55,yl=0.71,xh=0.93,yh=0.90)
+    return leg

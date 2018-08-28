@@ -391,6 +391,28 @@ class Plot1D(PlotBase) :
         # Clean up
         #self.pads.canvas.Clear() #TODO: check if this can be uncommented
 
+    def make_region_compare_plot(self, sample_name, hists):
+        # Get Canvas
+        can = self.pads.canvas
+        can.cd()
+        if self.doLogY : can.SetLogy(True)
+
+        hists.axis.Draw()
+        for hist in hists.hists:
+            hist.Draw("HIST SAME")
+        hists.leg.Draw()
+        pu.draw_atlas_label('Internal','Higgs LFV', sample_name)
+
+        # Reset axis
+        can.RedrawAxis()
+        can.SetTickx()
+        can.SetTicky()
+        can.Update()
+
+        # Save the histogram
+
+        self.save_plot(can)
+
     def Print(self) :
         print "Plot1D    plot: %s  (region: %s  var: %s)"%(
             self.name, self.region, self.variable)
