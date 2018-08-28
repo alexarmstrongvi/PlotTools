@@ -72,10 +72,10 @@ plot_defaults = {
     'l_truthClass[0]'      : Plot1D( bin_range=[-4.5, 11.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Leading lepton truth classification'),
     'l_truthClass[1]'      : Plot1D( bin_range=[-4.5, 11.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Subleading lepton truth classification'),
     'l_truthClass[2]'      : Plot1D( bin_range=[-4.5, 11.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Fake candidate lepton Truth Classification'),
-    'l_type[0]'            : Plot1D( bin_range=[-1.5, 39.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Leading Z Lepton type'),
-    'l_origin[0]'          : Plot1D( bin_range=[-1.5, 46.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Leading Z Lepton origin'),
-    'l_type[1]'            : Plot1D( bin_range=[-1.5, 39.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Subleading Z Lepton type'),
-    'l_origin[1]'          : Plot1D( bin_range=[-1.5, 46.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Subleading Z Lepton origin'),
+    'l_type[0]'            : Plot1D( bin_range=[-1.5, 39.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Lep0 type'),
+    'l_origin[0]'          : Plot1D( bin_range=[-1.5, 46.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Lep0 origin'),
+    'l_type[1]'            : Plot1D( bin_range=[-1.5, 39.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Lep1 type'),
+    'l_origin[1]'          : Plot1D( bin_range=[-1.5, 46.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Lep1 origin'),
     'l_type[2]'            : Plot1D( bin_range=[-1.5, 39.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Fake Candidate Lepton type'),
     'l_origin[2]'          : Plot1D( bin_range=[-1.5, 46.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Fake Candidate Lepton origin'),
     'l_BkgMotherPdgId[2]'  : Plot1D( bin_range=[-20.5, 20.5], bin_width=1, doNorm=True, doLogY=False, add_underflow=True, ptype=Types.stack, xlabel='Fake Candidate Lepton Mother PdgID'),
@@ -119,7 +119,7 @@ plot_defaults = {
     # MET + leptons
     'MET'                  : Plot1D( bin_range=[0.0, 200.0],  bin_width=5, doLogY=False, xunits='GeV', xlabel='E_{T}^{miss}'),
     'METPhi'               : Plot1D( bin_range=[0.0, 3.15],   nbins=30, xlabel='MET_{#phi}'),
-    'MCollASym'            : Plot1D( bin_range=[0.0, 250.0],  nbins=25, xunits='GeV', xlabel='LFV Collinear Mass m_{coll}'),
+    'MCollASym'            : Plot1D( bin_range=[0.0, 300.0, 0, 18000], bin_width=10, doNorm=False, xunits='GeV', xlabel='LFV Collinear Mass m_{coll}'),
     'dpt_ll'               : Plot1D( bin_range=[0, 150.0],  bin_width=2.5, doLogY=False, xunits='GeV', xlabel='#Deltap_{T}^{ll}'),
     'DphiLep0MET'          : Plot1D( bin_range=[-0.2, 3.3], bin_width=0.1, add_underflow=True, xlabel='#Delta#phi(l_{0},MET)'),
     'DphiLep1MET'          : Plot1D( bin_range=[-0.2, 3.3], bin_width=0.1, add_underflow=True, xlabel='#Delta#phi(l_{1},MET)'),
@@ -240,24 +240,21 @@ plot_defaults['l_eta[2]'].rebin_bins = [-3.0, -2.5, -1.45, 0, 1.45, 2.5, 3.0]
 # Edit that copy as needed
 region_plots = {}
 
+region_plots['symmetry'] = {
+  'l_pt[0]' : deepcopy(plot_defaults['l_pt[0]']),
+  'l_pt[1]' : deepcopy(plot_defaults['l_pt[1]']),
+}
+region_plots['symmetry']['l_pt[0]'].update(bin_range=[0, 500], bin_width=20, doLogY=True)
+region_plots['symmetry']['l_pt[1]'].update(bin_range=[0, 500], bin_width=20, doLogY=True)
+region_plots['symmetry_mue'] = region_plots['symmetry']
+region_plots['symmetry_emu'] = region_plots['symmetry']
+
 region_plots['wjets_FF_VRden_emu'] = {
   'MLL' : deepcopy(plot_defaults['MLL'])
 }
 region_plots['wjets_FF_VRden_emu']['MLL'].update(bin_range=[0, 150], bin_width=5)
-
-region_plots['wjets_FF_VRden_mue'] = {
-  'MLL' : deepcopy(plot_defaults['MLL'])
-}
-region_plots['wjets_FF_VRden_mue']['MLL'].update(bin_range=[0, 150], bin_width=5)
-
-region_plots['wjets_FF_VRnum_emu'] = {
-  'MLL' : deepcopy(plot_defaults['MLL'])
-}
-region_plots['wjets_FF_VRnum_emu']['MLL'].update(bin_range=[0, 150], bin_width=5)
-
-region_plots['wjets_FF_VRnum_mue'] = {
-'MLL' : deepcopy(plot_defaults['MLL'])
-}
-region_plots['wjets_FF_VRnum_mue']['MLL'].update(bin_range=[0, 150], bin_width=5)
+region_plots['wjets_FF_VRden_mue'] = region_plots['wjets_FF_VRden_emu']
+region_plots['wjets_FF_VRnum_emu'] = region_plots['wjets_FF_VRden_emu'] 
+region_plots['wjets_FF_VRnum_mue'] = region_plots['wjets_FF_VRden_emu']
 
 

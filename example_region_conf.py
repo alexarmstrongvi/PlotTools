@@ -173,6 +173,18 @@ REGIONS[-1].tcut = Baseline_Sel + " && " + emu
 REGIONS.append(Region("baseline_mue", "Baseline (Channel: Mu-El)"))
 REGIONS[-1].tcut = Baseline_Sel + " && " + mue
 
+REGIONS.append(Region("symmetric","Symmetric"))
+symm_sel = singlelep_trig
+symm_sel += ' && l_pt[0] >= 20 && l_pt[1] >= 20'
+symm_sel += ' && fabs(l_eta[0]) <= 2.4 && fabs(l_eta[1]) <= 2.4'
+symm_sel += ' && nBJets == 0'
+symm_sel += ' && 30 < MLL && MLL < 150'
+REGIONS[-1].tcut = symm_sel 
+base_sym = REGIONS[-1]
+REGIONS.append(base_sym.build_channel('emu', 'e#mu', '$e\mu$', emu))
+base_sym.compare_regions.append(REGIONS[-1])
+REGIONS.append(base_sym.build_channel('mue', '#mu e', '$\mu e$', mue))
+base_sym.compare_regions.append(REGIONS[-1])
 # Validation Regions
 
 # Signal Regions

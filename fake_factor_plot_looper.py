@@ -650,6 +650,8 @@ def build_hist(h_name, plot, sample, cut):
         hist.SetLineColor(sample.color)
         draw_cmd = "%s>>+%s"%(plot.variable, hist.GetName())
         sample.tree.Draw(draw_cmd, cut, "goff")
+
+        hist.SetMaximum(plot.ymax)
         
         if plot.rebin_bins:
             new_bins = array('d', plot.rebin_bins)

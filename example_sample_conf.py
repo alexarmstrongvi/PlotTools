@@ -20,7 +20,7 @@ color_palette = {
     'orange'  : [ROOT.kOrange  +1, ROOT.kOrange  +2, ROOT.kOrange  +8, ROOT.kOrange  +5, ROOT.kOrange  +0],
     'yellow'  : [ROOT.kYellow  +2, ROOT.kYellow  -1, ROOT.kYellow  -2, ROOT.kYellow  -7, ROOT.kYellow  +4],
     'spring'  : [ROOT.kSpring  -8, ROOT.kSpring  -7, ROOT.kSpring  +2, ROOT.kSpring  +3, ROOT.kSpring  +4],
-    'green'   : [ROOT.kGreen   +0, ROOT.kGreen   +1, ROOT.kGreen   +2, ROOT.kGreen   +3, ROOT.kGreen   +4],
+    'green'   : [ROOT.kGreen   -2, ROOT.kGreen   -8, ROOT.kGreen   +2, ROOT.kGreen   +3, ROOT.kGreen   +4],
     'teal'    : [ROOT.kTeal    +0, ROOT.kTeal    +1, ROOT.kTeal    +2, ROOT.kTeal    +3, ROOT.kTeal    +4],
     'cyan'    : [ROOT.kCyan    +0, ROOT.kCyan    +1, ROOT.kCyan    +2, ROOT.kCyan    +3, ROOT.kCyan    +4],
     'azure'   : [ROOT.kAzure   -7, ROOT.kAzure   -9, ROOT.kAzure   +8, ROOT.kAzure   +3, ROOT.kAzure   +4],
@@ -47,13 +47,19 @@ fakes.color = color_palette['gray'][0]
 ################################################################################
 # Signal
 signal_branching_ratio = 0.01
-signal_SF = 1
+signal_SF = 10
 signal_label = "Higgs LFV" if signal_SF == 1 else "Higgs LFV (%dX)"%signal_SF
 
-signal = Signal("higgs_lfv", signal_label); SAMPLES.append(signal)
+signal = Background("higgs_lfv", signal_label); SAMPLES.append(signal)
 signal.scale_factor *= signal_branching_ratio * signal_SF
 signal.color = color_palette['green'][0] 
 
+signal_taum = Background("higgs_lfv_taum", "H#rightarrow#tau#mu"); SAMPLES.append(signal_taum)
+signal_taum.scale_factor *= signal_branching_ratio * signal_SF
+signal_taum.color = color_palette['green'][0] 
+signal_taue = Background("higgs_lfv_taue", "H#rightarrow#taue"); SAMPLES.append(signal_taue)
+signal_taue.scale_factor *= signal_branching_ratio * signal_SF
+signal_taue.color = color_palette['green'][1] 
 ################################################################################
 # Backgrounds
 #######################################

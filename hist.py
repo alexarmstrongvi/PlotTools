@@ -79,6 +79,17 @@ class RatioHist1D(HistBase) :
             self.ratio
         ]
 
+class RegionCompare1D(HistBase):
+    def __init__(self, regions, sample, plot):
+        self.axis = None
+        self.leg = None
+        self.hists = []
+
+        self.axis = make_stack_axis(plot)
+        for reg in regions:
+
+
+
 class DataMCRatioHist1D(RatioHist1D) :
     def __init__(self, plot, reg, stack_hist):
         #TODO: take samples as input as opposed to stack hist
@@ -362,6 +373,7 @@ class DataMCStackHist1D(HistBase):
         self.mc_total.SetLineWidth(3)
 
     def add_stack_data(self, plot, reg, YIELD_TBL, data):
+        if not data: return
         #TODO: Look for a way to combine with backgrounds
         var_name = pu.strip_for_root_name(plot.variable)
         hd_name = "h_"+reg.name+'_data_'+ var_name

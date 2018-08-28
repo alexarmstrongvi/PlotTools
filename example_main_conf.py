@@ -29,9 +29,9 @@ run_fakes = False
 add_truth_den = False
 add_truth_num = False
 run_den = False
-run_num = False
+run_num = True
 run_zjets = False
-run_base = False
+run_base = True
 
 assert run_den != run_num
 assert run_zjets != run_base
@@ -69,8 +69,7 @@ from example_sample_conf import *
 # To remove sample from plot, comment out the line setting its TChain
 # Samples with empty TChains get removed below
 
-data.set_chain_from_dsid_list(g.groups['data'], data_ntuple_dir)
-
+#data.set_chain_from_dsid_list(g.groups['data'], data_ntuple_dir)
 top.set_chain_from_dsid_list(g.groups['top'], bkg_ntuple_dir)
 #ttbar.set_chain_from_dsid_list(g.groups['ttbar'], bkg_ntuple_dir)
 #stop.set_chain_from_dsid_list(g.groups['singletop'], bkg_ntuple_dir)
@@ -105,7 +104,8 @@ higgs.set_chain_from_dsid_list(g.groups['higgs'], bkg_ntuple_dir)
 #ggF_Htt.set_chain_from_dsid_list(g.groups['ggF_Htt'], bkg_ntuple_dir)
 #VBF_Htt.set_chain_from_dsid_list(g.groups['VBF_Htt'], bkg_ntuple_dir)
 
-#signal.set_chain_from_dsid_list(g.groups['higgs_lfv'], signal_ntuple_dir)
+signal_taum.set_chain_from_dsid_list(g.groups['higgs_lfv_taum'], signal_ntuple_dir)
+#signal_taue.set_chain_from_dsid_list(g.groups['higgs_lfv_taue'], signal_ntuple_dir)
 if run_fakes:
     fakes.set_chain_from_dsid_list(g.groups['data'], fake_ntuple_dir)
 
@@ -287,7 +287,9 @@ elif run_num:
         region_ops += ['zjets_FF_CR_num_eem', 'zjets_FF_CR_num_mmm']
         region_ops += ['zjets_FF_CR_num_eee', 'zjets_FF_CR_num_mme']
     if run_base:
-        region_ops += ['wjets_FF_VR_num_emu', 'wjets_FF_VR_num_mue']
+        #region_ops += ['wjets_FF_VR_num_emu', 'wjets_FF_VR_num_mue']
+        region_ops += ['symmetric_emu','symmetric_mue']
+        #region_ops += ['symmetric']
 else:
     #region_ops += ['zjets_FF_CR']
     region_ops += ['zCR']
@@ -343,7 +345,7 @@ if run_fakes:
 # Strings for plotting
 from example_plot_conf import * #TODO: Dont use import *
 PlotBase.save_dir = g.plots_dir
-Plot1D.auto_set_ylimits = True
+Plot1D.auto_set_ylimits = False
 Plot1D.doLogY = False
 Plot2D.doLogZ = False
 Plot2D.auto_set_zlimits = False
@@ -360,7 +362,8 @@ PLOTS = []
 for region in region_ops:
     vars_to_plot = list(vars_to_plot_all)
     if "wjets" in region:
-        vars_to_plot += ['l_pt[0]','l_pt[1]', 'MET', 'l_eta[1]', 'dpt_ll', 'RelMET', 'MLL', 'nLJets', 'l_mT[0]','DphiLep1MET', 'DphiLep0MET']
+        #vars_to_plot += ['l_pt[0]','l_pt[1]', 'MET', 'l_eta[1]', 'dpt_ll', 'RelMET', 'MLL', 'nLJets', 'l_mT[0]','DphiLep1MET', 'DphiLep0MET']
+        vars_to_plot += ['l_origin[0]','l_origin[1]','l_truthClass[0]','l_truthClass[1]']
     if "zjets" in region:
         #vars_to_plot += ['dR_Z_Fake:(ptll - l_pt[2])', 'ptll:(ptll - l_pt[2])', 'dR_Z_Fake:(ptll - l_pt[2])/ptll', '(ptll - l_pt[2])/ptll', '(ptll - l_pt[2] - MET)/ptll', 'lep_met_pT[2]', 'DphiLep2MET']
         #vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
@@ -369,10 +372,14 @@ for region in region_ops:
     if "wzCR" in region:
         vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_pt[2]', 'l_mT[2]', 'MET', 'MLL']
         vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
+    if "symmetric" in region:
+        #vars_to_plot += ['MCollASym', 'l_pt[0]', 'l_pt[1]','l_eta[0]','l_eta[1]','nLJets','nBJets']
+        vars_to_plot += ['MCollASym']
+        
     
     # Remove duplicate names
     vars_to_plot = list(set(vars_to_plot))
-    assert vars_to_plot, ("No plots requested")
+    #assert vars_to_plot, ("No plots requested")
     
     for var in vars_to_plot:
         key = var

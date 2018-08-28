@@ -143,7 +143,8 @@ def make_plots2D(plot, reg):
 def make_plotsStack(plot, reg):
     ''' '''
     backgrounds = [s for s in SAMPLES if s.isMC and not s.isSignal]
-    data = [s for s in SAMPLES if not s.isMC][0]
+    data = [s for s in SAMPLES if not s.isMC]
+    data = data[0] if len(data) else None
     signals = [s for s in SAMPLES if s.isMC and s.isSignal]
     with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=backgrounds, sig=signals) as main_hist:
         plot.make_data_mc_stack_plot(reg.displayname, main_hist)

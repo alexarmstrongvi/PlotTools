@@ -124,7 +124,7 @@ for num_den in [NUM_STR, DEN_STR]:
     #ttbar.set_chain_from_dsid_list(g.groups['ttbar'], bkg_ntuple_dir2)
     #stop.set_chain_from_dsid_list(g.groups['singletop'], bkg_ntuple_dir2)
     #wtop.set_chain_from_dsid_list(g.groups['Wt'], bkg_ntuple_dir2)
-    ttbar_x.set_chain_from_dsid_list(g.groups['ttbar_lep'], bkg_ntuple_dir2)
+    ttbar_x.set_chain_from_dsid_list(g.groups['ttbarX'], bkg_ntuple_dir2)
     VV.set_chain_from_dsid_list(g.groups['VV'], bkg_ntuple_dir2)
     VVV.set_chain_from_dsid_list(g.groups['VVV'], bkg_ntuple_dir2)
     zll.set_chain_from_dsid_list(g.groups['zll'], bkg_ntuple_dir2)
