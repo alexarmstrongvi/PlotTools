@@ -22,13 +22,11 @@ r.THStack.__init__._creates = False
 
 def main():
     global args
-
-    for sample in SAMPLES :
-        print '\n', 20*'-', "Making comparison plot for %s"%sample.displayname, 20*'-', '\n'
-        for regions in REGION_TUPLES:
-            for plot in PLOTS:
-                with hist.RegionCompare1D(regions, sample, plot) as reg_cf_hists:
-                    Plot1D.make_region_compare_1dhist(reg_cf_hists)
+    for regions in REGION_TUPLES:
+        for plot in PLOTS:
+            print '\n', 20*'-', "Making comparison plot for %s"%plot.variable, 20*'-', '\n'
+            with RegionCompare1D(regions, SAMPLES, plot) as reg_cf_hists:
+                plot.make_region_compare_plot("Monte Carlo", reg_cf_hists)
 
 ################################################################################
 # SETUP FUNCTIONS
