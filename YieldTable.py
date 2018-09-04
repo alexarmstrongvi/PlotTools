@@ -234,6 +234,11 @@ class YieldTbl:
         for formula_pair in self.row_formulas:
             # Apply formula
             tmp_row = self.apply_row_formula(formula_pair[1], formula_pair[0])
+            
+            # Skip column if all values are NaN
+            if all(x != x for x in tmp_row):
+                continue
+            
             new_rows.append(tmp_row)
         
         # Add formulas to original table
@@ -301,6 +306,10 @@ class YieldTbl:
         for formula_pair in self.column_formulas:
             # Apply formula
             tmp_col = self.apply_column_formula(formula_pair[1], formula_pair[0])
+
+            # Skip column if all values are NaN
+            if all(x[0] != x[0] for x in tmp_col):
+                continue
 
             # Store new column
             if not new_columns: new_columns = tmp_col

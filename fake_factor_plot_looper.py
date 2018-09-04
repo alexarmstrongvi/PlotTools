@@ -41,7 +41,7 @@ r.THStack.__init__._creates = False
 # Local classes for plotting
 import PlotTools.plot_utils as pu
 from PlotTools.YieldTable import UncFloat
-from global_variables import event_list_dir, plots_dir
+from global_variables import event_list_dir, plots_dir, yield_tbl_dir
 from PlotTools.hist import make_stack_axis
 
 @contextmanager
@@ -242,7 +242,15 @@ def main ():
     for channel_name, ff_hist_dict in ff_hists.iteritems():
         print "FF values for", channel_name
         ff_hist = ff_hist_dict[KEYS.data_corr_fake_factor]
-        pu.print_hist(ff_hist)
+        print pu.print_hist(ff_hist)
+
+        suffix = "_" + args.suffix if args.suffix else ""
+        name = channel_name + "_FFbins" + suffix + ".tex"
+        save_path = os.path.join(yield_tbl_dir, name)
+        with open(save_path, 'w') as ofile:
+            print "Saving FF table to", save_path
+            ofile.write(pu.print_hist(ff_hist, tablefmt='latex'))
+
     print "Making plots"
     save_and_write_hists(ff_hists, hists)
 

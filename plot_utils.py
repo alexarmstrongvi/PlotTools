@@ -3,6 +3,8 @@ from math import sqrt, log10, isnan
 import re
 ROOT.gROOT.SetBatch(True)
 from array import array
+from collections import defaultdict, OrderedDict
+from tabulate import tabulate
 
 ROOT.gStyle.SetCanvasPreferGL(ROOT.kTRUE)
 
@@ -470,13 +472,105 @@ def make_rebinned_th2f(hist, xbins=None, ybins=None, name=''):
     hnew.SetName(old_name)
     return hnew
 
-def print_hist(hist):
+def hist_to_dict(hist, add_overflow=False, bin_range_keys=False):
+    # Returns a dict of the form dict[xbin][ybin] = bin value
+    # Options to include overflow and underflow bins or use
+    # bin range (e.g. "1.30 - 2.41"). Precision is currently hard coded 
+    if isinstance(hist, ROOT.TH2):
+        h_dict = OrderedDict()
+        xaxis = hist.GetXaxis()
+        yaxis = hist.GetYaxis()
+        nxbins = xaxis.GetNbins()+1
+        nybins = yaxis.GetNbins()+1
+        for xbin in range(0, nxbins + 1):
+            for ybin in range(0, nybins + 1):
+                if bin_range_keys:
+                    xbin_low = xaxis.GetBinLowEdge(xbin)
+                    xbin_high = xaxis.GetBinUpEdge(xbin)
+                    ybin_low = yaxis.GetBinLowEdge(ybin)
+                    ybin_high = yaxis.GetBinUpEdge(ybin)
+                    if xbin == nxbins:
+                        xkey = "> %.2f" % xbin_low 
+                    elif xbin == 0:
+                        xkey = "< %.2f" % xbin_high 
+                    else:
+                        xkey = "%.2f-%.2f" % (xbin_low, xbin_high) 
+                    if ybin == nybins:
+                        ykey = "> %.2f" % ybin_low 
+                    elif ybin == 0:
+                        ykey = "< %.2f" % ybin_high 
+                    else:
+                        ykey = "%.2f-%.2f" % (ybin_low, ybin_high) 
+                else:
+                    xkey = str(xbin)
+                    ykey = str(ybin)
+                bin_value = hist.GetBinContent(xbin, ybin)
+                underflow = (xbin == 0) or (ybin == 0)
+                overflow = (xbin == nxbins) or (ybin == nybins)
+                if (underflow or overflow) and not add_overflow: continue
+                if xkey not in h_dict: h_dict[xkey] = OrderedDict()
+                h_dict[xkey][ykey] = bin_value
+    elif isinstance(hist, ROOT.TH1):
+        h_dict = OrderedDict()
+        xaxis = hist.GetXaxis()
+        nxbins = xaxis.GetNbins()+1
+        for xbin in range(0, nxbins + 1):
+            underflow = (xbin == 0)
+            overflow = (xbin == nxbins)
+            if bin_range_keys:
+                xbin_low = xaxis.GetBinLowEdge(xbin)
+                xbin_high = xaxis.GetBinUpEdge(xbin)
+                if overflow:
+                    key = "> %.2f" % xbin_low 
+                elif underflow:
+                    key = "< %.2f" % xbin_high 
+                else:
+                    key = "%.2f-%.2f" % (xbin_low, xbin_high)
+            else:
+                key = str(xbin)
+            bin_value = hist.GetBinContent(xbin)
+            if (underflow or overflow) and not add_overflow: continue
+            h_dict[key] = bin_value
+    else:
+        print "Histogram type not recognized: ", type(hist)
+    return h_dict
+
+def print_hist(hist, tablefmt='psql'):
+    hist_dict_bins = hist_to_dict(hist, add_overflow=True, bin_range_keys=False)
+    hist_dict_range = hist_to_dict(hist, add_overflow=True, bin_range_keys=True)
+    if not hist_dict_bins or not hist_dict_range: return ""
+
+    if isinstance(hist, ROOT.TH2):
+        headers = [""]
+        table = []
+        for x_bin, x_range in zip(hist_dict_bins, hist_dict_range):
+            headers.append("(%s) %s" % (x_bin, x_range))
+            column = []
+            if not table:
+                # Fill first column of table with y-labels
+                for y_bin, y_range in zip(hist_dict_bins[x_bin], hist_dict_range[x_range]):
+                    table.append(["(%s) %s" % (y_bin, y_range)])
+            for row, (y_bin, y_range) in enumerate(zip(hist_dict_bins[x_bin], hist_dict_range[x_range])):
+                table[row].append(hist_dict_bins[x_bin][y_bin])
+        tex_string = tabulate(table, headers=headers, tablefmt=tablefmt)        
+    elif isinstance(hist, ROOT.TH1):
+        headers = []
+        row = []
+        for x_bin, x_range in zip(hist_dict_bins, hist_dict_range):
+            headers.append("(%s) %s" % (x_bin, x_range))
+            row.append(hist_dict_bins[x_bin])
+        tex_string = tabulate([row], headers=headers, tablefmt=tablefmt)        
+    return tex_string
+
+
+def print_hist_old(hist):
+    print_str = ""
     if isinstance(hist, ROOT.TH2):
         xaxis = hist.GetXaxis()
         yaxis = hist.GetYaxis()
         nxbins = xaxis.GetNbins()+1
         nybins = yaxis.GetNbins()+1
-        print "\t(xbin, ybin) = (xbin range, ybin range) = bin value"
+        print_str += "\t(xbin, ybin) = (xbin range, ybin range) = bin value\n"
         for xbin in range(0, nxbins + 1):
             for ybin in range(0, nybins + 1):
                 #xbin_center = xaxis.GetBinCenter(xbin)
@@ -489,12 +583,12 @@ def print_hist(hist):
                 underflow = xbin == 0 or ybin == 0
                 overflow = xbin == nxbins or ybin == nybins
                 if (underflow or overflow) and not bin_value: continue
-                print "\t(%d, %d) = ([%.2f - %.2f], [%.2f - %.2f]) = %.3f" % (
+                print_str += "\t(%d, %d) = ([%.2f - %.2f], [%.2f - %.2f]) = %.3f\n" % (
                         xbin, ybin, xbin_low, xbin_high, ybin_low, ybin_high, bin_value)
     elif isinstance(hist, ROOT.TH1):
         xaxis = hist.GetXaxis()
         nxbins = xaxis.GetNbins()+1
-        print "\t(xbin) = [xbin range] = bin value"
+        print_str += "\t(xbin) = [xbin range] = bin value\n"
         for xbin in range(0, nxbins + 1):
                 xbin_low = xaxis.GetBinLowEdge(xbin)
                 xbin_high = xaxis.GetBinUpEdge(xbin)
@@ -502,10 +596,11 @@ def print_hist(hist):
                 underflow = xbin == 0
                 overflow = xbin == nxbins
                 if (underflow or overflow) and not bin_value: continue
-                print "\t(%d) = [%.2f - %.2f] = %.3f" % (
+                print_str += "\t(%d) = [%.2f - %.2f] = %.3f\n" % (
                         xbin, xbin_low, xbin_high, bin_value)
     else:
         print "Histogram type not recognized: ", type(hist)
+    return print_str
 
 def scale_thstack(stack, scale_factor):
     '''
