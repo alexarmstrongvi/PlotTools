@@ -19,6 +19,7 @@ from PlotTools.plot import Plot1D, Plot2D, Types
 from PlotTools.region import Region
 from PlotTools.YieldTable import UncFloat
 import PlotTools.plot_utils as pu
+from global_variables import event_list_dir
 
 #TODOs
 # Move style stuff to ATLAS style files or plot.py and import
@@ -34,24 +35,23 @@ class HistBase:
     def __enter__(self):
         return self
     def __exit__(self, exception_type, exception_value, traceback):
-        self.clear()
+        self.clear(self.list_of_root_objects())
     def list_of_root_objects(self):
         " Return list of all class members that are or contain root objects"
         #TODO: Get python to get all class variables that inherit fromTObject
         #      (e.g. use self.__class__.__dict__)
         raise NotImplementedError()
 
-    def clear(self):
+    def clear(self, list_of_root_objects):
         # Delete all underlying root objects
-        # -
-        for ro in self.list_of_root_objects():
+        for ro in list_of_root_objects:
             # Variables
             if not ro or isinstance(ro, r.THStack):
                 # THStack is just a container for the hists in the stack and
                 # therefore does not need to be deleted
                 continue
             elif isinstance(ro, list):
-                root_delete(ro)
+                self.clear(ro)
             elif issubclass(type(ro), r.TObject):
                 ro.Delete()
             else:
@@ -80,23 +80,28 @@ class RatioHist1D(HistBase) :
         ]
 
 class RegionCompare1D(HistBase):
-    def __init__(self, regions, sample, plot):
+    def __init__(self, regions, samples, plot):
         self.axis = None
         self.leg = None
         self.hists = []
 
         self.axis = make_stack_axis(plot)
         self.leg = make_basic_legend(plot)
-        for reg in regions:
-            print "Setting EventLists for %s"%reg.name
-            cut = r.TCut(reg.tcut)
-            for sample in SAMPLES :
+        for ii, reg in enumerate(regions):
+            comb_hist = None
+            for sample in samples:
+                print "Setting EventLists for %s"%sample.name
                 list_name = "list_" + reg.name + "_" + sample.name
-                sample.set_event_list(cut, list_name, event_list_dir)
-                draw
-                hist = make_basic_hist(plot, sample, region)
-                self.leg.AddEntry(hist, reg.displayname, "l")
-                self.hists.append(hist)
+                sample.set_event_list(reg.tcut, list_name, event_list_dir)
+                hist = make_basic_hist(plot, sample, reg)
+                if comb_hist:
+                    comb_hist.Add(hist)
+                    hist.Delete()
+                else:
+                    comb_hist = hist
+            comb_hist.SetLineStyle(ii%10 + 1)
+            self.leg.AddEntry(comb_hist, reg.displayname, "l")
+            self.hists.append(comb_hist)
 
     def list_of_root_objects(self):
         return [
@@ -670,11 +675,12 @@ def make_basic_hist(plot, sample, reg, apply_cuts=False):
                 plot.xlabel, plot.ylabel)
 
     h.SetLineColor(sample.color)
+    h.SetFillColor(0)
     h.Sumw2
 
     # Draw final histogram (i.e. selections and weights applied)
-    if plot.variable != mc_sample.weight_str:
-        weight_str = "%s * %s"%(mc_sample.weight_str, str(mc_sample.scale_factor))
+    if plot.variable != sample.weight_str:
+        weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
     else:
         weight_str = 1
 
@@ -687,7 +693,7 @@ def make_basic_hist(plot, sample, reg, apply_cuts=False):
     sample.tree.Draw(draw_cmd, weight, "goff")
     return h
 
-def make_basic_legend(self, plot):
+def make_basic_legend(plot):
     if plot.leg_is_left :
         leg = pu.default_legend(xl=0.2,yl=0.7,xh=0.47, yh=0.87)
     elif plot.leg_is_bottom_right :
