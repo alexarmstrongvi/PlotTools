@@ -19,9 +19,6 @@ plot_defaults = {
     'n_baseLeptons'        : Plot1D( bin_range=[-0.5, 10.5],  bin_width=1, xlabel='N_{baseline leptons}'),
     'n_leptons'            : Plot1D( bin_range=[-0.5, 10.5],  bin_width=1, xlabel='N_{signal leptons}'),
     'n_taus'               : Plot1D( bin_range=[-0.5, 10.5],  bin_width=1, xlabel='N_{signal taus}'),
-    # Leptons
-    'l_pt'                 : Plot1D( bin_range=[0.0, 500.0],  bin_width=5, xunits='GeV', xlabel='Lepton p_{T}'),
-    'aID_Lep0Pt'           : Plot1D( bin_range=[0.0, 200.0],  nbins=40, xunits='GeV', xlabel='p_{T}^{leading lep} anti-ID'),
     ## Electrons
     'el1_track_pt'         : Plot1D( bin_range=[0.0, 500.0],  nbins=25, xunits='GeV', xlabel='Leading electron track p_{T}'),
     'el1_clus_pt'          : Plot1D( bin_range=[0.0, 500.0],  nbins=25, xunits='GeV', xlabel='Leading electron cluster p_{T}'),
@@ -87,6 +84,10 @@ plot_defaults = {
     'l_IsoGrad[2]'         : Plot1D( bin_range=[-1.5, 3.5],   bin_width=1, xlabel='Lepton2 passes isoGradient'),
     'l_IsoGrad[3]'         : Plot1D( bin_range=[-1.5, 3.5],   bin_width=1, xlabel='Lepton3 passes isoGradient'),
     'l_IsoGrad[4]'         : Plot1D( bin_range=[-1.5, 3.5],   bin_width=1, xlabel='Lepton4 passes isoGradient'),
+    'l_etconetopo20[1]'    : Plot1D( bin_range=[-2, 5],   nbins=100, add_underflow=True, xunits='GeV', xlabel='Iso E_{T}^{lep1} topocone'),
+    'l_ptvarcone[1]'       : Plot1D( bin_range=[0.5, 5],     nbins=25, xunits='GeV', xlabel='Iso p_{T}^{lep1} varcone'),
+    'l_pt[1]+l_etconetopo20[1]'     : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='p_{T}^{lep1}+etconetopo'),
+    'l_pt[1]+l_ptvarcone[1]'        : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='p_{T}^{lep1}+ptvarcone'),
     #'l_ID'                 : Plot1D( bin_range=[-1.5, 4.5],   bin_width=1, doNorm=True, doLogY=False, add_underflow=True,  xlabel='Lepton ID (non-inclusive)'),
     'l_ID'                 : Plot1D( bin_range=[-1.5, 5.5],   bin_width=1, doNorm=True, doLogY=False, add_underflow=True,  xlabel='Lepton ID (non-inclusive)'),
     'l_q'                  : Plot1D( bin_range=[-1.5, 1.5],   bin_width=1, xlabel='Lepton charge'),
@@ -104,7 +105,7 @@ plot_defaults = {
     'MLep1'                : Plot1D( bin_range=[0.0, -1],     nbins=25, xunits='GeV', xlabel='M_{l1}'),
     'DEtaLL'               : Plot1D( bin_range=[0.0, 6.0],    nbins=20, xlabel='#Delta#eta_{ll}'),
     'DphiLL'               : Plot1D( bin_range=[0.0, 3.15],   nbins=30, xlabel='#Delta#phi_{ll}'),
-    'drll'                 : Plot1D( bin_range=[0.0, 6.0],    nbins=60, doLogY=False, xlabel='#DeltaR_{ll}'),
+    'drll'                 : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, doLogY=False, xlabel='#DeltaR(lep0,lep1)'),
     'dRy_sEl_bMu_Calo'     : Plot1D( bin_range=[0.0, 6.0],    nbins=60, xlabel='#DeltaR_{sig E, base Calo Mu}'),
     'isCaloTagged'         : Plot1D( bin_range=[-1.5, 3.5],   bin_width=1, xlabel='Calo-Tagged Muon'),
     'dilep_flav'           : Plot1D( bin_range=[-0.5, 4.5],   bin_width=1, xlabel='Dilepton flavor'),
@@ -114,8 +115,9 @@ plot_defaults = {
     'MtLep1'               : Plot1D( bin_range=[0.0, 140.0],  nbins=20, xunits='GeV', xlabel='m_{T}(l_{1},MET)'),
     #'MLLL'                 : Plot1D( bin_range=[60, 400],     nbins=60, add_underflow=True, xunits='GeV', xlabel='M_{lll}'),
     'MLLL'                 : Plot1D( bin_range=[0, 120],      nbins=60, add_underflow=True, xunits='GeV', xlabel='M_{lll}'),
-    'MLL'                  : Plot1D( bin_range=[60, 120],     bin_width=1, add_underflow=True, doLogY=False, xunits='GeV', xlabel='M_{ll}'),
+    'MLL'                  : Plot1D( bin_range=[0, 150],     bin_width=5, add_underflow=True, doLogY=False, xunits='GeV', xlabel='M_{ll}'),
     'ptll'                 : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='pT_{ll}'),
+    'el1pT_trackclus_ratio': Plot1D( bin_range=[0, 3],        nbins=30, xlabel='el_{subleading pT}^{track} / el_{subleading pT}^{cluster}'),
     # MET + leptons
     'MET'                  : Plot1D( bin_range=[0.0, 200.0],  bin_width=5, doLogY=False, xunits='GeV', xlabel='E_{T}^{miss}'),
     'METPhi'               : Plot1D( bin_range=[0.0, 3.15],   nbins=30, xlabel='MET_{#phi}'),
@@ -151,47 +153,32 @@ plot_defaults = {
     'j_jvf'                : Plot1D( bin_range=[0.0, -1],     nbins=25, xlabel='Jet JVF'),
     'j_phi'                : Plot1D( bin_range=[0.0, 3.15],   nbins=30, xlabel='Jet #phi'),
     'j_flav'               : Plot1D( bin_range=[-0.5, 4.5],   nbins=5, xlabel='Jet flavor (0:NA,1:CL,2:CB,3:F)'),
-    # Leptons
-    'preEl_EcaloClus'      : Plot1D( bin_range=[ 0, 50],      nbins=50,  add_overflow=False, xunits='GeV', xlabel='E_{preEl CaloCluster}'),
-    'preEl_etaCaloClus'    : Plot1D( bin_range=[-3.0, 3.0],   nbins=20, xlabel='#eta_{preEl CaloCluster}'),
-    'baseEl_etconetopo20'  : Plot1D( bin_range=[ -7, 15],     nbins=50,  doLogY=False, xunits='GeV', xlabel='E_{T}^{baselineEl} conetopo20' ),
-    'baseEl_ptvarcone20'   : Plot1D( bin_range=[ -1, 4],      nbins=25,  doLogY=False, xunits='GeV', xlabel='p_{T}^{baselineEl} ptvarcone20' ),
-    'baseMu_etconetopo20'  : Plot1D( bin_range=[ -3, 3],      nbins=60,  xunits='GeV', xlabel='E_{T}^{baselineMu} conetopo20' ),
-    'baseMu_ptvarcone30'   : Plot1D( bin_range=[ -3, 3],      nbins=60,  doLogY=False, xunits='GeV', xlabel='p_{T}^{baselineMu} ptvarcone30' ),
-    'el1pT_trackclus_ratio': Plot1D( bin_range=[0, 3],        nbins=30, xlabel='el_{subleading pT}^{track} / el_{subleading pT}^{cluster}'),
     # Fakes
     'nLepID'               : Plot1D( bin_range=[-1.5, 7.5],   bin_width=1, xlabel='ID lepton multiplicity'),
     'nLepAntiID'           : Plot1D( bin_range=[-1.5, 7.5],   bin_width=1, xlabel='anti-ID lepton multiplicity'),
-    'aID_Lep0Pt'           : Plot1D( bin_range=[0.0, 200.0],  nbins=40, xunits='GeV', xlabel='p_{T}^{leading lep} anti-ID'),
-    'aID_Lep1Pt'           : Plot1D( bin_range=[0.0, 100.0],  nbins=20, xunits='GeV', xlabel='p_{T}^{subleading lep} anti-ID'),
-    'aID_Lep0Eta'          : Plot1D( bin_range=[-3.0, 3.0],   nbins=20, xlabel='#eta^{leading lep} anti-ID'),
-    'aID_Lep1Eta'          : Plot1D( bin_range=[-3.0, 3.0],   nbins=20, xlabel='#eta^{subleading lep} anti-ID'),
-    'aID_MLep0'            : Plot1D( bin_range=[0, 120],     bin_width=2, xunits='GeV', xlabel='M_{probe lep}'),
-    'aID_MLL'              : Plot1D( bin_range=[0.0, 300.0],  nbins=100, xunits='GeV', xlabel='M_{ll}(ID, anti-ID)'),
-    'aID_Lep0Flav'         : Plot1D( bin_range=[-1.5, 5.5],   bin_width=1, xlabel='Leading antiID flavor'),
-    'aID_Lep1Flav'         : Plot1D( bin_range=[-1.5, 5.5],   bin_width=1, xlabel='Subleading antiID flavor'),
-    'aID_Lep0Q'            : Plot1D( bin_range=[-1.5, 1.5],   bin_width=1, xlabel='Leading anti-ID charge'),
-    'aID_Lep1Q'            : Plot1D( bin_range=[-1.5, 1.5],   bin_width=1, xlabel='Subleading anti-ID charge'),
     'Z_MLL'                : Plot1D( bin_range=[60, 120.0],   bin_width=1, xunits='GeV', xlabel='M_{ll} (Z pair)'),
     'Z2_MLL'               : Plot1D( bin_range=[0, 200.0],    bin_width=5, xunits='GeV', xlabel='M_{ll} (2nd Z pair)'),
-    'aID_dpt_ll'           : Plot1D( bin_range=[0.0, 150.0],  nbins=20, xunits='GeV', xlabel='#Deltap_{T}^{ll}(ID, anti-ID)'),
-    'aID_drll'             : Plot1D( bin_range=[0.0, 6.0],    nbins=60, xlabel='#DeltaR_{ll}(ID, anti-ID)'),
     'dR_Zl'                : Plot1D( bin_range=[0.0, 6.0],    nbins=60, xlabel='#DeltaR(Z, lep)'),
+    'DphiLepJet[2]'        : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.5, xlabel='#DeltaR(lep2, closest jet)'),
     'Z_dilep_flav'         : Plot1D( bin_range=[-1.5, 5.5],   nbins=7, xlabel='Z dilepton flavor'),
     'Z2_dilep_flav'        : Plot1D( bin_range=[-1.5, 5.5],   nbins=7, xlabel='2nd Z dilepton flavor'),
-    'l_pt[2]'              : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='Lep2 p_{T}'),
+    'l_pt[2]'              : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='p_{T}^{lep2}'),
     'lep_met_pT[2]'        : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='p_{T}(fake lepton + MET)'),
     'l_eta[2]'             : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.01, xlabel='Fake candidate lepton #eta'),
     'l_flav[2]'            : Plot1D( bin_range=[-1.5, 2.5],   bin_width=1, xlabel='Fake candidate flavor'),
     'Z_dilep_sign'         : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='Z Dilepton Sign : OS(-1) SS(1)'),
     'Z2_dilep_sign'        : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='2nd Z Dilepton Sign : OS(-1) SS(1)'),
     'Z_Lep2_dPhi_MET'      : Plot1D( bin_range=[-3.15, 3.15], nbins=63, add_underflow=True, xlabel='#Delta#phi(l_{3},MET)'),
-    'l_mT[2]'              : Plot1D( bin_range=[0.0, 200.0],  bin_width=5, xunits='GeV', xlabel='Lepton2 m_{T}'),
-    'l_mT[1]'              : Plot1D( bin_range=[0.0, 300.0],  bin_width=5, xunits='GeV', xlabel='Lepton1 m_{T}'),
-    'l_mT[0]'              : Plot1D( bin_range=[0.0, 300.0],  bin_width=5, xunits='GeV', xlabel='Lepton0 m_{T}'),
-    'dR_ZLep0_Fake'        : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR_{fake, Zlep0}'),
-    'dR_ZLep1_Fake'        : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR_{fake, Zlep1}'),
-    'dR_Z_Fake'            : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR_{fake, Z}'),
+    'l_mT[2]'              : Plot1D( bin_range=[0.0, 200.0],  bin_width=5, xunits='GeV', xlabel='m_{T}^{lep2}'),
+    'l_mT[1]'              : Plot1D( bin_range=[0.0, 300.0],  bin_width=5, xunits='GeV', xlabel='m_{T}^{lep1}'),
+    'l_mT[0]'              : Plot1D( bin_range=[0.0, 300.0],  bin_width=5, xunits='GeV', xlabel='m_{T}^{lep0}'),
+    'dR_ZLep0_Fake'        : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR(lep2, lep0)'),
+    'DphiL2L[1]'           : Plot1D( bin_range=[0.0, 3.2],    bin_width=0.1, xlabel='#Delta#phi(lep2, lep1)'),
+    'DphiL2L[0]'           : Plot1D( bin_range=[0.0, 3.2],    bin_width=0.1, xlabel='#Delta#phi(lep2, lep0)'),
+    'drl2l[0]'             : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR(lep2, lep0)'),
+    'drl2l[1]'             : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR(lep2, lep1)'),
+    'dR_ZLep1_Fake'        : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR(lep2, lep1)'),
+    'dR_Z_Fake'            : Plot1D( bin_range=[0.0, 6.0],    bin_width=0.1, xlabel='#DeltaR(lep2, Z)'),
     'DphiLepMET'           : Plot1D( bin_range=[-0.2, 3.2],   bin_width=0.2, xlabel='#Delta#phi(MET, closest lep)'),
     'DphiBaseLepMET'       : Plot1D( bin_range=[-0.2, 3.2],   bin_width=0.2, xlabel='#Delta#phi(MET, closest base lep)'),
     'DphiJetMET'           : Plot1D( bin_range=[-0.2, 3.2],   bin_width=0.2, xlabel='#Delta#phi(MET, closest jet)'),
@@ -209,6 +196,19 @@ plot_defaults = {
     'dR_Z_Fake:(ptll - l_pt[2])' : Plot2D( bin_range=[-9.5, 30.5, 0.5, 5.5], xbin_width = 2, ybin_width = 1, xlabel="#DeltapT(Z,fake lep)" , ylabel='#DeltaR_{fake, Z}'), 
     'ptll:(ptll - l_pt[2])' : Plot2D( bin_range=[-10, 75, 0, 150], xbin_width = 5, ybin_width = 5, xlabel="#DeltapT(Z,fake lep)" , ylabel='Z pT'), 
     'dR_Z_Fake:(ptll - l_pt[2])/ptll' : Plot2D( bin_range=[-0.05, 1.05, -0.5, 5.5], xbin_width = 0.02, ybin_width = 1, xlabel="#DeltapT(Z,fake lep)/pT_{Z}" , ylabel='#DeltaR_{fake, Z}'), 
+    'DphiLep0MET:drll'     : Plot2D( bin_range = [0, 6, 0.0, 3.2], xbin_width=0.1, ybin_width=0.2, xlabel="#DeltaR(lep0,lep1)", ylabel='#Delta#phi(l0,MET)'),
+    'DphiLep1MET:drll'     : Plot2D( bin_range = [0, 6, 0.0, 3.2], xbin_width=0.1, ybin_width=0.2, xlabel="#DeltaR(lep0,lep1)", ylabel='#Delta#phi(l1,MET)'),
+    'DphiLep0MET:l_mT[0]'  : Plot2D( bin_range = [0, 100, 0.0, 3.2], xbin_width=5, ybin_width=0.2, xunits="GeV", xlabel="m_{T}^{lep0}", ylabel='#Delta#phi(l0,MET)'),
+    'DphiLep1MET:l_mT[1]'  : Plot2D( bin_range = [0, 100, 0.0, 3.2], xbin_width=5, ybin_width=0.2, xunits="GeV", xlabel="m_{T}^{lep1}", ylabel='#Delta#phi(l1,MET)'),
+    'DphiLep1MET:MET'  : Plot2D( bin_range = [0, 100, 0.0, 3.2], xbin_width=5, ybin_width=0.2, xunits="GeV", xlabel="MET", ylabel='#Delta#phi(l1,MET)'),
+    'DphiLep1MET:RelMET'  : Plot2D( bin_range = [0, 100, 0.0, 3.2], xbin_width=5, ybin_width=0.2, xunits="GeV", xlabel="RelMET", ylabel='#Delta#phi(l1,MET)'),
+    'DphiLep0MET:MET'  : Plot2D( bin_range = [0, 100, 0.0, 3.2], xbin_width=5, ybin_width=0.2, xunits="GeV", xlabel="MET", ylabel='#Delta#phi(l0#,MET)'),
+    'DphiLep0MET:RelMET'  : Plot2D( bin_range = [0, 100, 0.0, 3.2], xbin_width=5, ybin_width=0.2, xunits="GeV", xlabel="RelMET", ylabel='#Delta#phi(l0,MET)'),
+    'DphiLep0MET/RelMET'  : Plot1D( bin_range = [0, 1], bin_width=0.01, xunits="GeV", xlabel="#Delta#phi(l0,MET)/RelMET"),
+    'l_pt[0]:drll'        : Plot2D( bin_range = [0.0, 3.2, 0, 100], xbin_width=0.2, ybin_width=1, xlabel="#DeltaR(lep0,lep1)", ylabel='p_{T}^{lep0}'),
+    'l_pt[0]:DphiLep1MET' : Plot2D( bin_range = [0.0, 3.2, 0, 100], xbin_width=0.2, ybin_width=1, xunits="GeV", xlabel="#Delta#phi(l1,MET)", ylabel='p_{T}^{lep0}'),
+    'dpt_ll:drll'         : Plot2D( bin_range = [0.0, 3.2, 0, 50], xbin_width=0.2, ybin_width=1, xlabel="#DeltaR(lep0,lep1)", ylabel='#Deltap_{T}^{ll}'),
+    'dpt_ll:DphiLep1MET'  : Plot2D( bin_range = [0.0, 3.2, 0, 50], xbin_width=0.2, ybin_width=1, xunits="GeV", xlabel="#Delta#phi(l1,MET)", ylabel='#Deltap_{T}^{ll}'),
 }
 
 # Add any labels to the plots
@@ -249,12 +249,26 @@ region_plots['symmetry']['l_pt[1]'].update(bin_range=[0, 500], bin_width=20, doL
 region_plots['symmetry_mue'] = region_plots['symmetry']
 region_plots['symmetry_emu'] = region_plots['symmetry']
 
-region_plots['wjets_FF_VRden_emu'] = {
+region_plots['zjets_FF_CR'] = {
   'MLL' : deepcopy(plot_defaults['MLL'])
 }
-region_plots['wjets_FF_VRden_emu']['MLL'].update(bin_range=[0, 150], bin_width=5)
-region_plots['wjets_FF_VRden_mue'] = region_plots['wjets_FF_VRden_emu']
-region_plots['wjets_FF_VRnum_emu'] = region_plots['wjets_FF_VRden_emu'] 
-region_plots['wjets_FF_VRnum_mue'] = region_plots['wjets_FF_VRden_emu']
+region_plots['zjets_FF_CR']['MLL'].update(bin_range = [60, 120], bin_width=1)
+region_plots['zjets_FF_CR_den_e'] = region_plots['zjets_FF_CR']
+region_plots['zjets_FF_CR_den_m'] = region_plots['zjets_FF_CR'] 
+region_plots['zjets_FF_CR_den_eee'] = region_plots['zjets_FF_CR'] 
+region_plots['zjets_FF_CR_den_eem'] = region_plots['zjets_FF_CR'] 
+region_plots['zjets_FF_CR_den_mme'] = region_plots['zjets_FF_CR'] 
+region_plots['zjets_FF_CR_den_mmm'] = region_plots['zjets_FF_CR'] 
+region_plots['zjets_FF_CR_num_e'] = region_plots['zjets_FF_CR']
+region_plots['zjets_FF_CR_num_m'] = region_plots['zjets_FF_CR'] 
+region_plots['zjets_FF_CR_num_eee'] = region_plots['zjets_FF_CR'] 
+region_plots['zjets_FF_CR_num_eem'] = region_plots['zjets_FF_CR'] 
+region_plots['zjets_FF_CR_num_mme'] = region_plots['zjets_FF_CR'] 
+region_plots['zjets_FF_CR_num_mmm'] = region_plots['zjets_FF_CR'] 
+region_plots['wzCR'] = region_plots['zjets_FF_CR'] 
+region_plots['wzCR_eee'] = region_plots['zjets_FF_CR'] 
+region_plots['wzCR_eem'] = region_plots['zjets_FF_CR'] 
+region_plots['wzCR_mme'] = region_plots['zjets_FF_CR'] 
+region_plots['wzCR_mmm'] = region_plots['zjets_FF_CR'] 
 
 

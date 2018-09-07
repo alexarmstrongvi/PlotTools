@@ -65,6 +65,20 @@ class UncFloat :
             rel_unc = sqrt(rel_unc1**2 + rel_unc2**2)
             uncertainty = rel_unc * abs(value)
         return UncFloat(value, uncertainty)
+    def __rdiv__(self, other):
+        if isinstance(other, Number):
+            # Assume errors are extremes
+            # Use largest uncertainty up/down
+            value = other / self.value
+            unc_up = abs((other / self.value) - (other / (self.value + self.uncertainty)))
+            unc_dn = abs((other / self.value) - (other / (self.value - self.uncertainty)))
+            uncertainty = max(unc_up, unc_dn)
+            return UncFloat(value, uncertainty)
+        elif isinstance(other, UncFloat):
+            print "TESTING:", other
+            return self.__div__(other)
+        else:
+            raise TypeError, "Undefined division of UncFloat by %s " % str(type(other))
     def __div__(self, other):
         if isinstance(other, Number):
             value = self.value / other 
@@ -134,6 +148,7 @@ class YieldTbl:
         self.row_displaynames = []
         self.row_latexnames = []
         self.row_mc_flags = []
+        self.row_signal_flags = []
         
         self.col_names = []
         self.col_displaynames = []
@@ -145,7 +160,7 @@ class YieldTbl:
         self.column_formulas = []
         self.row_formulas = []
 
-    def add_row(self, row_name, row_displayname = "", row_latexname="", mc=False):
+    def add_row(self, row_name, row_displayname = "", row_latexname="", mc=False, signal=False):
         display = row_displayname if row_displayname else row_name
         latex = row_latexname if row_latexname else display
 
@@ -153,6 +168,7 @@ class YieldTbl:
         self.row_displaynames.append(display)
         self.row_latexnames.append(latex)
         self.row_mc_flags.append(mc)
+        self.row_signal_flags.append(signal)
 
         n_cols = len(self.table[0]) if len(self.table) else 1
         row = [UncFloat(0,0) for x in range(n_cols)] 
@@ -176,7 +192,8 @@ class YieldTbl:
                   row_latexname="",
                   col_displayname="",
                   col_latexname="",
-                  mc = False
+                  mc = False,
+                  signal = False,
                   ):
         if not row_displayname: row_displayname = row_name
         if not row_latexname: row_latexname = row_displayname
@@ -184,7 +201,7 @@ class YieldTbl:
         if not col_latexname: col_latexname = col_displayname
         
         if row_name not in self.row_names:
-            self.add_row(row_name, row_displayname, row_latexname, mc = mc)
+            self.add_row(row_name, row_displayname, row_latexname, mc = mc, signal=signal)
             if col_name not in self.col_names:
                 self.col_names.append(col_name)
                 self.col_displaynames.append(col_displayname)
@@ -236,13 +253,13 @@ class YieldTbl:
             tmp_row = self.apply_row_formula(formula_pair[1], formula_pair[0])
             
             # Skip column if all values are NaN
-            if all(x != x for x in tmp_row):
-                continue
+            if all(x != x for x in tmp_row): tmp_row = []
             
             new_rows.append(tmp_row)
         
         # Add formulas to original table
         for r_idx, row in enumerate(new_rows):
+            if not row: continue
             for c_idx, entry in enumerate(row):
                 if isinstance(entry, float):
                     value, error = entry, 0
@@ -251,6 +268,7 @@ class YieldTbl:
 
                 row_names = self.row_formulas[r_idx][0]
                 mc = True if row_names.display == 'mc_total' else False
+                signal = False
                 self.add_entry(row_name=row_names.name,
                                col_name=self.col_names[c_idx],
                                val=value,
@@ -259,7 +277,8 @@ class YieldTbl:
                                row_latexname = row_names.latex,
                                col_displayname = self.col_displaynames[c_idx],
                                col_latexname = self.col_latexnames[c_idx],
-                               mc = mc
+                               mc = mc,
+                               signal = signal
                                ) 
     
     def apply_row_formula(self, formula, labels):
@@ -297,6 +316,11 @@ class YieldTbl:
                 print "ERROR :: ", err
                 print "INFO :: Row names = ", self.row_names
                 result = float('NaN')
+            except TypeError, err:
+                print "ERROR :: ", err
+                print "INFO :: Formula = ", formula 
+                result = float('NaN')
+
             new_row.append(result)
         
         return new_row
@@ -335,18 +359,43 @@ class YieldTbl:
                                col_displayname = col_names.display,
                                col_latexname = col_names.latex 
                                ) 
-    def mc_sample_names(self):
+    def n_rows(self):
+        n1 = len(self.row_names)
+        n2 = len(self.row_displaynames)
+        n3 = len(self.row_latexnames)
+        n4 = len(self.row_mc_flags)
+        n5 = len(self.row_signal_flags)
+        n6 = len(self.table)
+        if n1 == n2 == n3 == n4 == n5:
+            return n1
+        else:
+            print "WARNING :: lost track of row count"
+            print "INFO :: ", n1, n2, n3, n4, n5
+            return 0
+
+    def mc_sample_names(self, no_signal=True):
         mc_samples = []
-        for row_name, mc_flag in zip(self.row_names, self.row_mc_flags):
-            if mc_flag:
-                mc_samples.append(row_name)
+        for idx in range(self.n_rows()):
+            sig_skip = no_signal and self.row_signal_flags[idx]
+            if self.row_mc_flags[idx] and not sig_skip:
+                mc_samples.append(self.row_names[idx])
         return mc_samples
+
+    def signal_sample_names(self):
+        sig_samples = []
+        for row_name, sig_flag in zip(self.row_names, self.row_signal_flags):
+            if sig_flag:
+                sig_samples.append(row_name)
+        return sig_samples
+
     
     def replace_formula_keywords(self, keyword):
         if not self.common_column_prefix:
             self.common_column_prefix = os.path.commonprefix(self.col_names).strip()
         if keyword == "MC":
             keyword = "(" + "+".join(self.mc_sample_names()) + ")"
+        elif keyword == "SIGNAL":
+            keyword = "(" + "+".join(self.signal_sample_names()) + ")"
         elif keyword == "BASE_REG":
             keyword = self.common_column_prefix
         elif keyword not in self.col_names:
@@ -438,18 +487,18 @@ class YieldTbl:
                 n_header_rows = 3
             moved_lines = 0
             
-            for idx in range(len(self.row_mc_flags)):
-                if self.row_mc_flags[idx]: continue
+            for idx in range(self.n_rows()):
+                if self.row_mc_flags[idx] and not self.row_signal_flags[idx]: continue
                 line_to_move = idx + n_header_rows - moved_lines
                 print_lst.append(print_lst.pop(line_to_move))
                 moved_lines += 1
 
             print_lst.append(hline)
             if latex: 
-                print_lst.insert(4,"\hline")
-                print_lst.insert(0,"\\adjustbox{max height=\dimexpr\\textheight-6cm\\relax, max width=\\textwidth}{")
+                print_lst.insert(4,hline)
+                #print_lst.insert(0,"\\adjustbox{max height=\dimexpr\\textheight-6cm\\relax, max width=\\textwidth}{")
                 print_lst.append(end_tabular)
-                print_lst.append("}")
+                #print_lst.append("}")
             print_str = "\n".join(print_lst)
         return print_str
 

@@ -133,11 +133,14 @@ def make_plots2D(plot, reg):
     signal_samples = [s for s in SAMPLES if s.isMC and s.isSignal]
 
     with Hist.Hist2D(plot, reg, YIELD_TBL, data_samples) as main_hist:
-        plot.make_2d_hist(main_hist, suffix = "_data")
-    with Hist.Hist2D(plot, reg, YIELD_TBL, mc_samples) as main_hist:
-        plot.make_2d_hist(main_hist, suffix = "_mc")
+        plot.make_2d_hist(main_hist, suffix = "data")
+    for sample in mc_samples:
+        with Hist.Hist2D(plot, reg, YIELD_TBL, [sample]) as main_hist:
+            plot.make_2d_hist(main_hist, suffix = sample.name)
+    #with Hist.Hist2D(plot, reg, YIELD_TBL, mc_samples) as main_hist:
+    #    plot.make_2d_hist(main_hist, suffix = "mc")
     with Hist.Hist2D(plot, reg, YIELD_TBL, signal_samples) as main_hist:
-        plot.make_2d_hist(main_hist, suffix = "_signal")
+        plot.make_2d_hist(main_hist, suffix = "signal")
 
 ################################################################################
 def make_plotsStack(plot, reg):
@@ -146,22 +149,18 @@ def make_plotsStack(plot, reg):
     data = [s for s in SAMPLES if not s.isMC]
     data = data[0] if len(data) else None
     signals = [s for s in SAMPLES if s.isMC and s.isSignal]
-    with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=backgrounds, sig=signals) as main_hist:
-        plot.make_data_mc_stack_plot(reg.displayname, main_hist)
-
-    ## For fake factor histograms
-    #with Hist.DataCorrMCRealStackHist1D(plot, reg, data=data, data_corr=bkgds, bkgds=backgrounds) as main_hist:
-    #    plot.make_fake_datacorr_mctruth_stack_plot(main_hist)
-
-    #with Hist.FakeFactor1D(plot, reg, ata_num, data_den, mc_num, mc_den) as main_hist:
-    #    plot.make_fake_factor_plot(main_hist)
+    #with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=backgrounds, sigs=signals) as main_hist:
+    #    plot.make_data_mc_stack_plot(reg.displayname, main_hist)
+    for sample in backgrounds: 
+        with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=[sample], sigs=signals) as main_hist:
+            plot.make_data_mc_stack_plot(reg.displayname, main_hist, suffix=sample.name)
 
 def make_plotsRatio(plot, reg) :
     ''' '''
     backgrounds = [s for s in SAMPLES if s.isMC and not s.isSignal]
     data = [s for s in SAMPLES if not s.isMC][0]
     signals = [s for s in SAMPLES if s.isMC and s.isSignal]
-    with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=backgrounds, sig=signals) as main_hist:
+    with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=backgrounds, sigs=signals) as main_hist:
         with Hist.DataMCRatioHist1D(plot, reg, main_hist) as ratio_hist:
             plot.make_data_mc_stack_with_ratio_plot(reg.displayname, main_hist, ratio_hist)
 

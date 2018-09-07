@@ -102,6 +102,14 @@ class RegionCompare1D(HistBase):
             comb_hist.SetLineStyle(ii%10 + 1)
             self.leg.AddEntry(comb_hist, reg.displayname, "l")
             self.hists.append(comb_hist)
+        
+        #if plot.doNorm:
+        if True:
+            for hist in self.hists:
+                normalize_hist(hist)
+        
+        if plot.auto_set_ylimits:
+            self.reformat_axis(plot)
 
     def list_of_root_objects(self):
         return [
@@ -110,6 +118,51 @@ class RegionCompare1D(HistBase):
             self.hists
         ]
 
+    def reformat_axis(self, plot):
+        ''' Reformat axis to fit content and labels'''
+        # Get max y-value in hists
+        maxy = 0
+        miny = float("inf")
+        for hist in self.hists:
+            maxy_tmp = hist.GetMaximum()
+            miny_tmp = hist.GetMinimum()    
+            if maxy_tmp > maxy: maxy = maxy_tmp
+            if miny_tmp < miny: miny = miny_tmp
+        
+        if maxy <= 0:
+            print "WARNING :: Max value of plot is <= 0"
+        
+        # Set max and min
+        if plot.doLogY:
+            maxy = 10**(pu.get_order_of_mag(maxy))
+            if miny > 0:
+                miny = 10**(pu.get_order_of_mag(miny))
+            else:
+                miny = 10**(pu.get_order_of_mag(maxy) - 4)
+        else:
+            maxy = maxy
+            miny = 0
+
+        # Get y-axis max multiplier to fit labels
+        max_mult = 1e5 if plot.doLogY else 1.8
+
+        # reformat the axis
+        self.axis.SetMaximum(max_mult*maxy)
+        self.axis.SetMinimum(miny)
+        #for hist in self.hists:
+        #    hist.SetMaximum(max_mult*maxy)
+        #    hist.SetMinimum(miny)
+
+def normalize_hist(hist):
+    norm_factor = 1.0/hist.Integral() if hist.Integral() else 1
+    if isinstance(hist, r.TH1):
+        hist.Scale(norm_factor)
+    elif isinstance(hist, r.TGraph):
+        pu.scale_tgraph(hist, norm_factor)
+    elif isinstance(hist, r.THStack):
+        pu.scale_thstack(hist, norm_factor)
+    else:
+        print "WARNING :: Unexpectd class type:", type(hist)
 
 class DataMCRatioHist1D(RatioHist1D) :
     def __init__(self, plot, reg, stack_hist):
@@ -249,7 +302,7 @@ def make_stack_axis(plot):
     return hax
 
 class DataMCStackHist1D(HistBase):
-    def __init__(self, plot, reg, YIELD_TBL, data, bkgds, sig=None):
+    def __init__(self, plot, reg, YIELD_TBL, data, bkgds, sigs=None):
         # Get plotting primitives
         # Not all primitives are for drawing. Some are for preserving pointers
         #TOOD: Remove YIELD_TBL after validating
@@ -268,13 +321,13 @@ class DataMCStackHist1D(HistBase):
         self.make_stack_legend(plot, reg)
         self.axis = make_stack_axis(plot)
         self.add_stack_backgrounds(plot, reg, YIELD_TBL, bkgds)
-        #self.add_stack_signals(plot, reg, sigs)
+        if sigs: self.add_stack_signals(plot, reg, YIELD_TBL, sigs)
         self.add_stack_data(plot, reg, YIELD_TBL, data)
         self.add_stack_mc_errors(plot, reg)
         if plot.doNorm:
             self.normalize_stack(plot, reg)
         if plot.auto_set_ylimits:
-            self.reformat_axis(plot, reg)
+            self.reformat_axis(plot)
 
     def list_of_root_objects(self):
         return [
@@ -301,7 +354,7 @@ class DataMCStackHist1D(HistBase):
 
         self.leg.SetNColumns(2)
         # TODO: Incorporate signal legend
-        self.leg_sig = pu.default_legend(xl=0.55, yl=0.6, xh=0.91, yh=0.71)
+        self.leg_sig = pu.default_legend(xl=0.55, yl=0.65, xh=0.91, yh=0.71)
         self.leg_sig.SetNColumns(1)
 
     def add_stack_backgrounds(self, plot, reg, YIELD_TBL, bkgds):
@@ -393,6 +446,55 @@ class DataMCStackHist1D(HistBase):
         self.mc_total.SetFillStyle(0)
         self.mc_total.SetLineWidth(3)
 
+    def add_stack_signals(self, plot, reg, YIELD_TBL, signals):
+        # Make MC sample hists
+        for sig_sample in signals:
+            # Initilize histogram
+            var_name = pu.strip_for_root_name(plot.variable)
+            h_name = "h_"+reg.name+'_'+sig_sample.name+"_"+ var_name
+            h = pu.th1d(h_name, "", int(plot.nbins),
+                        plot.xmin, plot.xmax,
+                        plot.xlabel, plot.ylabel)
+
+            h.SetLineColor(sig_sample.color)
+            h.GetXaxis().SetLabelOffset(-999)
+            h.SetLineWidth(2)
+            h.SetLineStyle(2)
+            h.SetFillStyle(0)
+            h.Sumw2
+
+            # Draw final histogram (i.e. selections and weights applied)
+            if plot.variable != sig_sample.weight_str:
+                weight_str = "%s * %s"%(sig_sample.weight_str, str(sig_sample.scale_factor))
+            else:
+                weight_str = 1
+                
+            draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
+            sig_sample.tree.Draw(draw_cmd, weight_str, "goff")
+
+            # Yield +/- stat error
+            stat_err = r.Double(0.0)
+            integral = h.IntegralAndError(0,-1,stat_err)
+
+            # Rebin
+            if plot.rebin_bins:
+                new_bins = array('d', plot.rebin_bins)
+                h = h.Rebin(len(new_bins)-1, h_name, new_bins)
+
+            h.leg_name = sig_sample.displayname #dynamic class members...ooo yeah!
+
+            # Add overflow
+            if plot.add_overflow:
+                pu.add_overflow_to_lastbin(h)
+            if plot.add_underflow:
+                pu.add_underflow_to_firstbin(h)
+
+            # Record all and non-empty histograms
+            self.leg_sig.AddEntry(h, sig_sample.displayname, "l")
+            YIELD_TBL.signals[sig_sample.name] = UncFloat(integral, stat_err)
+
+            self.signals.append(h)
+    
     def add_stack_data(self, plot, reg, YIELD_TBL, data):
         if not data: return
         #TODO: Look for a way to combine with backgrounds
@@ -405,9 +507,11 @@ class DataMCStackHist1D(HistBase):
 
         cut = "(" + reg.tcut + ")"
         cut = r.TCut(cut)
+        blind_factor = 0 if data.blinded and reg.isSR else 1
         draw_cmd = "%s>>%s"%(plot.variable, self.data_hist.GetName())
+        
 
-        data.tree.Draw(draw_cmd, cut, "goff")
+        data.tree.Draw(draw_cmd, "(%s) * %d" % (cut, blind_factor), "goff")
         self.data_hist.GetXaxis().SetLabelOffset(-999)
 
         # print the yield +/- stat error
@@ -496,7 +600,7 @@ class DataMCStackHist1D(HistBase):
             data_norm_factor = 1.0/self.data_hist.Integral()
             pu.scale_tgraph(self.data, data_norm_factor)
 
-    def reformat_axis(self, plot, reg):
+    def reformat_axis(self, plot):
         ''' Reformat axis to fit content and labels'''
         if not self.mc_stack:
             return
@@ -512,8 +616,7 @@ class DataMCStackHist1D(HistBase):
             return
 
         # Get default y-axis max and min limits
-        logy = plot.doLogY
-        if logy:
+        if plot.doLogY:
             maxy = 10**(pu.get_order_of_mag(maxy))
             if miny > 0:
                 miny = 10**(pu.get_order_of_mag(miny))
@@ -524,7 +627,7 @@ class DataMCStackHist1D(HistBase):
             miny = 0
 
         # Get y-axis max multiplier to fit labels
-        if logy:
+        if plot.doLogY:
             max_mult = 1e6 if self.signals else 1e5
         else:
             max_mult = 2.0 if self.signals else 1.8

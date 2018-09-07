@@ -313,7 +313,7 @@ class Plot1D(PlotBase) :
         self.pads = DoubleRatioPads(name)
         self.ptype = Types.double_ratio
 
-    def make_data_mc_stack_plot(self, reg_name, hists):
+    def make_data_mc_stack_plot(self, reg_name, hists, suffix=''):
         # Get Canvas
         can = self.pads.canvas
         can.cd()
@@ -334,7 +334,7 @@ class Plot1D(PlotBase) :
 
         # Save the histogram
 
-        self.save_plot(can)
+        self.save_plot(can, suffix)
 
         # Clean up
         #plot.pads.canvas.Clear() #TODO: Figure out when to clear canvas (do I need to)
@@ -348,6 +348,7 @@ class Plot1D(PlotBase) :
         for hsig in hists.signals: hsig.Draw("hist same")
         if hists.data: hists.data.Draw("option same pz 0")
         hists.leg.Draw()
+        hists.leg_sig.Draw()
         pu.draw_atlas_label('Internal','Higgs LFV', reg_name)
 
     def make_data_mc_stack_with_ratio_plot(self, reg_name, stack_hists, ratio_hists):
@@ -391,7 +392,7 @@ class Plot1D(PlotBase) :
         # Clean up
         #self.pads.canvas.Clear() #TODO: check if this can be uncommented
 
-    def make_region_compare_plot(self, sample_name, hists):
+    def make_region_compare_plot(self, sample_name, hists, suffix=""):
         # Get Canvas
         can = self.pads.canvas
         can.cd()
@@ -399,6 +400,7 @@ class Plot1D(PlotBase) :
 
         hists.axis.Draw()
         for hist in hists.hists:
+            hist.SetLineWidth(3)
             hist.Draw("HIST SAME")
         hists.leg.Draw()
         pu.draw_atlas_label('Internal','Higgs LFV', sample_name)
@@ -411,7 +413,7 @@ class Plot1D(PlotBase) :
 
         # Save the histogram
 
-        self.save_plot(can)
+        self.save_plot(can, suffix)
 
     def Print(self) :
         print "Plot1D    plot: %s  (region: %s  var: %s)"%(

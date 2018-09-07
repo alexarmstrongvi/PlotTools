@@ -81,19 +81,9 @@ dilep_trig_pT = '(%s || %s)'%(dilep15_trig_pT, dilep16_trig_pT)
 singlelep_trig_pT = '(%s || %s)'%(singlelep15_trig_pT, singlelep16_trig_pT)
 lepton_trig_pT = '(%s || %s)'%(singlelep_trig_pT, dilep_trig_pT)
 
-# Region building blocks
-Baseline_Sel = ('l_pt[0] >= 45 && l_pt[1] >= 15 '
-              + '&& (30 < MLL && MLL < 150) '
-              + '&& nBJets==0 '
-              + '&& ( !'+mue+' || el1pT_trackclus_ratio < 1.2) '
-              + '&&' + DF_OS
-              #+ '&& dilep_flav <= 1 '
-              + '&&' + lepton_trig_pT)
-VBF_stripped = "JetN_g30 >= 2 && j_pt[0] > 40 && Mjj > 400 && DEtaJJ > 3"
-
-
-########################################
+################################################################################
 # Create regions
+################################################################################
 REGIONS = []
 
 REGIONS.append(Region(name = "no_sel", displayname = "No Selections"))
@@ -102,15 +92,131 @@ REGIONS[-1].tcut = '1' #DF_OS
 REGIONS.append(Region("trig_only", "Lepton Triggers"))
 REGIONS[-1].tcut = lepton_trig_pT + "&&" + DF_OS
 
-# Control Regions
-REGIONS.append(Region("topCR", "Top CR"))
-REGIONS[-1].tcut = "nBJets >= 1 && MET > 40 &&" + DF_OS + " &&" + lepton_trig_pT
 
+################################################################################
+# Preselection regions
+REGIONS.append(Region("preselection", "Preselection"))
+preselection_sel = singlelep_trig_pT
+preselection_sel += ' && fabs(lep_d0sigBSCorr[0]) < 15 && fabs(lep_d0sigBSCorr[1]) < 15'
+preselection_sel += ' && fabs(lep_z0SinTheta[0]) < 15 && fabs(lep_z0SinTheta[1]) < 15'
+
+REGIONS[-1].tcut = preselection_sel
+preselection = REGIONS[-1]
+REGIONS.append(preselection.build_channel('emu', 'e#mu', '$e\mu$', emu))
+preselection.compare_regions.append(REGIONS[-1])
+REGIONS.append(preselection.build_channel('mue', '#mue', '$\mu e$', mue))
+preselection.compare_regions.append(REGIONS[-1])
+
+# Baseline regions
+REGIONS.append(Region("baseline", "Baseline"))
+baseline_sel = preselection_sel
+baseline_sel += ' && nBJets==0'
+baseline_sel += ' && l_pt[0] >= 45'
+baseline_sel += ' && l_pt[1] >= 10'
+baseline_sel += ' && (30 < MLL && MLL < 150)'
+baseline_sel += ' && ( !'+mue+' || el1pT_trackclus_ratio < 1.2)'
+
+REGIONS[-1].tcut = baseline_sel
+baseline = REGIONS[-1]
+REGIONS.append(baseline.build_channel('emu', 'e#mu', '$e\mu$', emu))
+baseline.compare_regions.append(REGIONS[-1])
+REGIONS.append(baseline.build_channel('mue', '#mue', '$\mu e$', mue))
+baseline.compare_regions.append(REGIONS[-1])
+
+REGIONS.append(Region("symmetric","Symmetric"))
+symm_sel = preselection_sel
+symm_sel += ' && l_pt[0] >= 20 && l_pt[1] >= 20'
+symm_sel += ' && fabs(l_eta[0]) <= 2.4 && fabs(l_eta[1]) <= 2.4'
+symm_sel += ' && nBJets == 0'
+symm_sel += ' && 30 < MLL && MLL < 150'
+REGIONS[-1].tcut = symm_sel 
+base_sym = REGIONS[-1]
+REGIONS.append(base_sym.build_channel('emu', 'e#mu', '$e\mu$', emu))
+base_sym.compare_regions.append(REGIONS[-1])
+REGIONS.append(base_sym.build_channel('mue', '#mue', '$\mu e$', mue))
+base_sym.compare_regions.append(REGIONS[-1])
+# Validation Regions
+
+################################################################################
+# Signal Regions
+VBF_stripped = "JetN_g30 >= 2 && j_pt[0] > 40 && Mjj > 400 && DEtaJJ > 3"
+REGIONS.append(Region("vbf", "VBF"))
+REGIONS[-1].tcut = "(%s) && (%s)"%(baseline_sel, VBF_stripped)
+
+REGIONS.append(Region("ggh_SR", "ggH SR"))
+ggH_sel = baseline_sel
+ggH_sel += ' && l_mT[0] > 50'
+ggH_sel += ' && DphiLep1MET < 1'
+ggH_sel += ' && taulep1_pT_ratio > 0.5'
+ggH_sel += ' && l_mT[1] < 40'
+REGIONS[-1].tcut = ggH_sel
+REGIONS[-1].isSR = True
+base = REGIONS[-1]
+REGIONS.append(base.build_channel('emu', 'e#mu', '$e\mu$', emu))
+base.compare_regions.append(REGIONS[-1])
+REGIONS.append(base.build_channel('mue', '#mue', '$\mu e$', mue))
+base.compare_regions.append(REGIONS[-1])
+
+################################################################################
+# Control Regions
+################################################################################
+
+# ttbar 
+top_sel = preselection_sel
+top_sel += ' && nBJets > 0'
+top_sel += ' && l_pt[0] >= 45'
+top_sel += ' && l_pt[1] >= 10'
+#top_sel += ' && (30 < MLL && MLL < 150)'
+#top_sel += ' && ( !'+mue+' || el1pT_trackclus_ratio < 1.2)'
+REGIONS.append(Region("top_CR", "Top CR"))
+REGIONS[-1].tcut = top_sel
+base = REGIONS[-1]
+REGIONS.append(base.build_channel('emu', 'e#mu', '$e\mu$', emu))
+base.compare_regions.append(REGIONS[-1])
+REGIONS.append(base.build_channel('mue', '#mue', '$\mu e$', mue))
+base.compare_regions.append(REGIONS[-1])
+
+# Z (->tautau) + jets
+ztt_sel = preselection_sel
+ztt_sel += ' && nBJets==0'
+ztt_sel += ' && l_pt[0] <= 45' #Orthgonal to baseline region
+ztt_sel += ' && l_pt[1] >= 10'
+ztt_sel += ' && (30 < MLL && MLL < 150)'
+ztt_sel += ' && drll > 2.9'
+ztt_sel += ' && DphiLep1MET < 1'
+ztt_sel += ' && taulep1_pT_ratio > 0.5'
+ztt_sel += ' && l_mT[1] < 40'
+
+REGIONS.append(Region("ztt_CR", "Z->tautau CR","$Z(\\rightarrow\\tau\\tau)$ + jets"))
+REGIONS[-1].tcut = ztt_sel
+base = REGIONS[-1]
+REGIONS.append(base.build_channel('emu', 'e#mu', '$e\mu$', emu))
+base.compare_regions.append(REGIONS[-1])
+REGIONS.append(base.build_channel('mue', '#mue', '$\mu e$', mue))
+base.compare_regions.append(REGIONS[-1])
+
+#W + jets (moved to main conf)
+#wjets_sel = preselection_sel
+#wjets_sel += ' && nBJets==0'
+#wjets_sel += ' && l_pt[0] <= 45' #Orthgonal to baseline region
+#wjets_sel += ' && l_pt[1] >= 10'
+#wjets_sel += ' && (30 < MLL && MLL < 150)'
+#wjets_sel += ' && drll <= 2.9'
+##wjets_sel += ' && DphiLep1MET < 1'
+##wjets_sel += ' && taulep1_pT_ratio > 0.5'
+##wjets_sel += ' && l_mT[1] < 40'
+#
+#REGIONS.append(Region("wjets_CR", "W+jets CR","$W$ + jets"))
+#REGIONS[-1].tcut = wjets_sel
+#base = REGIONS[-1]
+#REGIONS.append(base.build_channel('emu', 'e#mu', '$e\mu$', emu))
+#base.compare_regions.append(REGIONS[-1])
+#REGIONS.append(base.build_channel('mue', '#mue', '$\mu e$', mue))
+#base.compare_regions.append(REGIONS[-1])
+
+# WZ
 REGIONS.append(Region("wzCR", "WZ CR"))
-wz_cr_cut = '1'
-wz_cr_cut += ' && %s' % singlelep_trig_pT
-wz_cr_cut += ' && fabs(lep_d0sigBSCorr[0]) < 15 && fabs(lep_d0sigBSCorr[1]) < 15 && fabs(lep_d0sigBSCorr[2]) < 15'
-wz_cr_cut += ' && fabs(lep_z0SinTheta[0]) < 15 && fabs(lep_z0SinTheta[1]) < 15 && fabs(lep_z0SinTheta[2]) < 15'
+wz_cr_cut = preselection_sel
 wz_cr_cut += " && 75 < Z_MLL && Z_MLL < 105"
 wz_cr_cut += ' && nBJets == 0'
 wz_cr_cut += ' && l_mT[2] > 50'
@@ -128,6 +234,7 @@ REGIONS[-1].tcut = wz_cr_cut + " && " + Z_ee + " && " + lep2_m
 REGIONS.append(Region("wzCR_mmm", "WZ CR (m+mm)"))
 REGIONS[-1].tcut = wz_cr_cut + " && " + Z_mumu + " && " + lep2_m
 
+# Z(->ll) + jets
 zll_cr_base = "1"
 #zll_cr_base = "75 < Z_MLL && Z_MLL < 105 && " + Z_SF_OS
 zll_cr_add  = '1'
@@ -146,50 +253,3 @@ REGIONS[-1].tcut = zll_cr_base + " && " + zll_cr_add + " && " + Z_ee
 
 REGIONS.append(Region("zCR_mumu", "Z CR (Channel: Mu-Mu)"))
 REGIONS[-1].tcut = zll_cr_base + " && " + zll_cr_add + " && " + Z_mumu
-
-ZTauTau_CR =  ('l_pt[0] >= 30 && l_pt[0] < 45 && l_pt[1] >= 15 '
-              + '&& (30 < MLL && MLL < 150) '
-              + '&& nBJets==0 '
-              + '&& ( !'+mue+' || el1pT_trackclus_ratio < 1.2) '
-              + '&&' + DF_OS)
-REGIONS.append(Region("ztautauCR", "Ztautau CR"))
-REGIONS[-1].tcut = ZTauTau_CR
-
-ZTauTau_CR =  ('l_pt[0] >= 30 && l_pt[0] < 45 && l_pt[1] >= 15 '
-              + '&& (30 < MLL && MLL < 150) '
-              + '&& nBJets==0 '
-              + '&& ( !'+mue+' || el1pT_trackclus_ratio < 1.2) '
-              + '&&' + DF_OS)
-REGIONS.append(Region("ztautauCR", "Ztautau CR"))
-REGIONS[-1].tcut = ZTauTau_CR
-
-# Baseline regions
-REGIONS.append(Region("baseline", "Baseline"))
-REGIONS[-1].tcut = Baseline_Sel
-
-REGIONS.append(Region("baseline_emu", "Baseline (Channel: El-Mu)"))
-REGIONS[-1].tcut = Baseline_Sel + " && " + emu
-
-REGIONS.append(Region("baseline_mue", "Baseline (Channel: Mu-El)"))
-REGIONS[-1].tcut = Baseline_Sel + " && " + mue
-
-REGIONS.append(Region("symmetric","Symmetric"))
-symm_sel = singlelep_trig
-symm_sel += ' && l_pt[0] >= 20 && l_pt[1] >= 20'
-symm_sel += ' && fabs(l_eta[0]) <= 2.4 && fabs(l_eta[1]) <= 2.4'
-symm_sel += ' && nBJets == 0'
-symm_sel += ' && 30 < MLL && MLL < 150'
-REGIONS[-1].tcut = symm_sel 
-base_sym = REGIONS[-1]
-REGIONS.append(base_sym.build_channel('emu', 'e#mu', '$e\mu$', emu))
-base_sym.compare_regions.append(REGIONS[-1])
-REGIONS.append(base_sym.build_channel('mue', '#mu e', '$\mu e$', mue))
-base_sym.compare_regions.append(REGIONS[-1])
-# Validation Regions
-
-# Signal Regions
-REGIONS.append(Region("vbf", "VBF"))
-REGIONS[-1].tcut = "(%s) && (%s)"%(Baseline_Sel, VBF_stripped)
-
-REGIONS.append(Region("optimized", "Optimized"))
-REGIONS[-1].tcut = "(%s) && !(%s) && DphiLep1MET < 1 && MtLep0 > 50 && MtLep1 < 40 && ((MET+l_pt[1])/l_pt[1]) > 0.5"%(Baseline_Sel, VBF_stripped)

@@ -18,7 +18,7 @@ color_palette = {
     'gray'    : [ROOT.kGray    +0, ROOT.kGray    +1, ROOT.kGray    +2, ROOT.kGray    +3, ROOT.kBlack   +0],
     'red'     : [ROOT.kRed     -7, ROOT.kRed     -3, ROOT.kRed     +2, ROOT.kRed     +3, ROOT.kRed     +4],
     'orange'  : [ROOT.kOrange  +1, ROOT.kOrange  +2, ROOT.kOrange  +8, ROOT.kOrange  +5, ROOT.kOrange  +0],
-    'yellow'  : [ROOT.kYellow  +2, ROOT.kYellow  -1, ROOT.kYellow  -2, ROOT.kYellow  -7, ROOT.kYellow  +4],
+    'yellow'  : [ROOT.kYellow  +2, ROOT.kYellow  -1, ROOT.kYellow  -8, ROOT.kYellow  -7, ROOT.kYellow  +4],
     'spring'  : [ROOT.kSpring  -8, ROOT.kSpring  -7, ROOT.kSpring  +2, ROOT.kSpring  +3, ROOT.kSpring  +4],
     'green'   : [ROOT.kGreen   -2, ROOT.kGreen   -8, ROOT.kGreen   +2, ROOT.kGreen   +3, ROOT.kGreen   +4],
     'teal'    : [ROOT.kTeal    +0, ROOT.kTeal    +1, ROOT.kTeal    +2, ROOT.kTeal    +3, ROOT.kTeal    +4],
@@ -46,20 +46,22 @@ fakes.color = color_palette['gray'][0]
 
 ################################################################################
 # Signal
-signal_branching_ratio = 0.01
-signal_SF = 10
-signal_label = "Higgs LFV" if signal_SF == 1 else "Higgs LFV (%dX)"%signal_SF
+signal_branching_ratio = 0.2
+signal_SF = 1
+signal_suffix = " (%.f%% BR)" % (signal_branching_ratio * 100)
+if signal_SF != 1:
+    signal_suffix += " X %.f" % signal_SF
 
-signal = Background("higgs_lfv", signal_label); SAMPLES.append(signal)
+signal = Signal("higgs_lfv", "LFV Higgs" + signal_suffix); SAMPLES.append(signal)
 signal.scale_factor *= signal_branching_ratio * signal_SF
-signal.color = color_palette['green'][0] 
+signal.color = color_palette['gray'][4] 
 
-signal_taum = Background("higgs_lfv_taum", "H#rightarrow#tau#mu"); SAMPLES.append(signal_taum)
+signal_taum = Signal("higgs_lfv_taum", "H#rightarrow#tau#mu" + signal_suffix,"$H\\rightarrow\\tau\mu$" + signal_suffix.replace("%","\%")); SAMPLES.append(signal_taum)
 signal_taum.scale_factor *= signal_branching_ratio * signal_SF
-signal_taum.color = color_palette['green'][0] 
-signal_taue = Background("higgs_lfv_taue", "H#rightarrow#taue"); SAMPLES.append(signal_taue)
+signal_taum.color = color_palette['gray'][4] 
+signal_taue = Signal("higgs_lfv_taue", "H#rightarrow#taue" + signal_suffix, "$H\\rightarrow\\tau e$" + signal_suffix.replace("%","\%")); SAMPLES.append(signal_taue)
 signal_taue.scale_factor *= signal_branching_ratio * signal_SF
-signal_taue.color = color_palette['green'][1] 
+signal_taue.color = color_palette['gray'][4] 
 ################################################################################
 # Backgrounds
 #######################################
@@ -137,5 +139,10 @@ wgamma = Background("wgamma", "W+#gamma","$W+\gamma$"); SAMPLES.append(wgamma)
 wgamma.color = color_palette['yellow'][1]
 
 # Z+gamma; 
-zgamma = Background("zgamma", "Z+gamma","$Z+\\gamma$"); SAMPLES.append(zgamma)
+zgamma = Background("zgamma", "Z+#gamma","$Z+\\gamma$"); SAMPLES.append(zgamma)
 zgamma.color = color_palette['yellow'][2]
+
+
+## MC background
+sm_mc = Background("sm_mc","SM MC"); SAMPLES.append(sm_mc)
+sm_mc.color = color_palette['violet'][0]

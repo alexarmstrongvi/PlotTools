@@ -5,6 +5,7 @@ import importlib
 from math import sqrt
 from hist import RegionCompare1D
 from plot import Plot1D
+import plot_utils as pu
 
 # Root data analysis framework
 import ROOT as r
@@ -22,11 +23,20 @@ r.THStack.__init__._creates = False
 
 def main():
     global args
+    print "TESTING 2:", [x.name for y in REGION_TUPLES for x in y]
     for regions in REGION_TUPLES:
+        suffix = "_".join([x.name for x in regions])
+        seen_variables = []
         for plot in PLOTS:
+            # HACK: Strip plots of region properties used for other loopers
+            if plot.variable in seen_variables: continue
+            seen_variables.append(plot.variable)
+            for reg in regions:
+                plot.name = pu.strip_for_root_name(plot.variable) 
+
             print '\n', 20*'-', "Making comparison plot for %s"%plot.variable, 20*'-', '\n'
             with RegionCompare1D(regions, SAMPLES, plot) as reg_cf_hists:
-                plot.make_region_compare_plot("Monte Carlo", reg_cf_hists)
+                plot.make_region_compare_plot("Monte Carlo", reg_cf_hists, suffix)
 
 ################################################################################
 # SETUP FUNCTIONS

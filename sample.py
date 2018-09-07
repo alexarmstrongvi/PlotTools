@@ -233,6 +233,7 @@ class Data(Sample):
         Sample.__init__(self, name, displayname)
         self.color = r.kBlack
         self.isMC = False
+        self.blinded = True
 
     def Print(self) :
         print 'Data (tree %s)'%(self.name)
@@ -256,14 +257,14 @@ class MCsample(Sample):
         self.isMC = True
 
     def isSignal(self) :
-        return self.is_signal
+        return self.isSignal
     def Print(self) :
         print 'MC Sample "%s" (tree %s)'%(self.displayname, self.name)
 
 class Background(MCsample) :
     def __init__(self, name = "", displayname = "", latexname="") :
         MCsample.__init__(self, name, displayname, latexname)
-        self.is_signal = False
+        self.isSignal = False
 
     def Print(self) :
         print 'Background "%s" (tree %s)'%(self.displayname, self.name)
@@ -271,7 +272,7 @@ class Background(MCsample) :
 class Signal(MCsample) :
     def __init__(self, name = "", displayname ="", latexname="") :
         MCsample.__init__(self, name, displayname, latexname)
-        self.is_signal = True
+        self.isSignal = True
 
     def Print(self) :
         print 'Signal "%s" (tree %s)'%(self.displayname, self.name)

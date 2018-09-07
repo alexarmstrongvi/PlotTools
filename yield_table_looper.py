@@ -27,12 +27,19 @@ def main():
     for reg in REGIONS:
         print '\n', 20*'-', "Yields for %s region"%reg.displayname, 20*'-', '\n'
 
-        yld_table = deepcopy(YLD_TABLE)
+        print "TESTING :: ",reg.yield_table
+        yld_table = reg.yield_table if reg.yield_table else deepcopy(YLD_TABLE)
         ########################################################################
         print "Setting EventLists for %s"%reg.name,
         print "(+%d comparison regions)"%len(reg.compare_regions) if len(reg.compare_regions) else ""
         for sample in SAMPLES :
-            weight_var = sample.weight_str if sample.isMC else ""
+            if sample.isMC:
+                weight_var = sample.weight_str
+            elif not sample.isMC and sample.blinded and reg.isSR:
+                weight_var = "0"
+            else:
+                weight_var = ""
+
             scale_factor = sample.scale_factor if sample.isMC else 1
             list_name = "list_" + reg.name + "_" + sample.name
             
@@ -47,7 +54,8 @@ def main():
                                 row_latexname = sample.latexname, 
                                 col_displayname = reg.displayname,
                                 col_latexname = reg.latexname,
-                                mc = sample.isMC
+                                mc = sample.isMC,
+                                signal = sample.isSignal if sample.isMC else False
                                 ) 
             for cf_reg in reg.compare_regions:
                 list_name = "list_" + cf_reg.name + "_" + sample.name
@@ -66,7 +74,8 @@ def main():
                                     row_latexname = sample.latexname, 
                                     col_displayname = cf_displayname,
                                     col_latexname = cf_latexname,
-                                    mc = sample.isMC
+                                    mc = sample.isMC,
+                                    signal = sample.isSignal if sample.isMC else False
                                     ) 
 
         

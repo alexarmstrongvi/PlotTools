@@ -14,6 +14,9 @@ class Region :
         self.latexname = latexname
         self.tcut = cuts
         self.compare_regions = []
+        self.isSR = False
+
+        self.yld_table = None # For linking to a YieldTbl object
 
         # Deprecated        
         self.truth_fake_sel = None
@@ -35,7 +38,10 @@ class Region :
         latexname = "%s (%s)" % (self.latexname, latexname)
         cuts = "%s && (%s)" % (self.tcut, cuts)
 
-        return Region(name, displayname, latexname, cuts)
+        new_reg = Region(name, displayname, latexname, cuts)
+        new_reg.isSR = self.isSR
+
+        return new_reg
 
 
     def setCutFlow(self) :
