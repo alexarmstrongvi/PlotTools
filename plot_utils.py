@@ -36,6 +36,11 @@ def strip_for_root_name(string):
     string = re.sub(r'/','_divide_', string)
     return string
 
+def determine_bin_edges(lo, hi, nbins):
+    assert lo < hi, ("ERROR (plot_utils.determine_bin_edges) :: lo > hi")
+    step = (hi-lo)/float(nbins)
+    return [lo + x*step for x in range(0, nbins+1)]
+
 # ----------------------------------------------
 #  TH1D Methods
 # ----------------------------------------------

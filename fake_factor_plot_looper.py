@@ -435,7 +435,6 @@ def get_fake_factor_hists(hists):
             ff_hists[channel_name][fake_factor_key] = ff_hist
     return ff_hists
 
-
 def save_and_write_hists(ff_hists_dict, hists):
     # Writing fake factor hists to root file
     if args.ofile_name:
@@ -664,7 +663,7 @@ def reformat_axis(plot, axis, hist_list):
 def build_hist(h_name, plot, sample, cut):
     cut = r.TCut(cut)
     if plot.is3D:
-        hist = r.TH3D(h_name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax, plot.nzbins, plot.zmin, plot.zmax)
+        hist = r.TH3D(h_name, "", plot.nxbins, plot.xbin_edges, plot.nybins, plot.ybin_edges, plot.nzbins, plot.zbin_edges)
         draw_cmd = "%s>>%s"%(plot.zvariable+":"+plot.yvariable+":"+plot.xvariable, hist.GetName())
         sample.tree.Draw(draw_cmd, cut, "goff")
         if plot.rebin_xbins:
@@ -677,7 +676,7 @@ def build_hist(h_name, plot, sample, cut):
             new_bins = array('d', plot.rebin_zbins)
             hist = pu.make_rebinned_th3(hist, zbins=new_bins)
     elif plot.is2D:
-        hist = r.TH2D(h_name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
+        hist = r.TH2D(h_name, "", plot.nxbins, plot.xbin_edges, plot.nybins, plot.ybin_edges)
         draw_cmd = "%s>>%s"%(plot.yvariable+":"+plot.xvariable, hist.GetName())
         sample.tree.Draw(draw_cmd, cut, "goff")
         if plot.rebin_xbins:
@@ -688,9 +687,8 @@ def build_hist(h_name, plot, sample, cut):
             hist = pu.make_rebinned_th2f(hist, ybins=new_bins)
 
     else:
-        hist = pu.th1d(h_name, "", int(plot.nbins),
-                    plot.xmin, plot.xmax,
-                    plot.ylabel, plot.ylabel)
+        labels = ";%s;%s" % (plot.xlabel, plot.ylabel)
+        hist = r.TH1D(h_name, labels, plot.nbins, plot.bin_edges)
         hist.Sumw2
         hist.SetLineColor(sample.color)
         draw_cmd = "%s>>+%s"%(plot.variable, hist.GetName())

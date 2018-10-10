@@ -18,6 +18,7 @@ import re
 from math import floor
 from enum import Enum
 from collections import OrderedDict
+from array import array
 
 # Root data analysis framework
 import ROOT as r
@@ -92,6 +93,7 @@ class Plot1D(PlotBase) :
         bin_range = [], # [x0, x1, y0, y1]
         bin_width = None, # Can specify to override nbins
         nbins = 20,
+        bin_edges = [],
         doLogY = None,
         doNorm = False,
         add_overflow = True,
@@ -131,12 +133,12 @@ class Plot1D(PlotBase) :
         # Objects
         self.pads = None
 
+        assert not bool(bin_edges) or not bool(bin_width), (
+                "ERROR Plot1D :: Only provide one bin value option")
+        if bin_edges:
+            bin_range = [bin_edges[0], bin_edges[-1]]
         self.xmin, self.xmax, self.ymin, self.ymax = self.determine_range(bin_range)
-
-        if bin_width:
-            self.nbins = determine_nbins(self.xmax, self.xmin, bin_width, self.variable)
-        else:
-            self.nbins = nbins
+        self.nbins, self.bin_edges = determine_bins(bin_edges, bin_width, nbins, self.xmin, self.xmax, variable)
 
         self.xunits = xunits
         self.yunits = yunits
@@ -151,6 +153,7 @@ class Plot1D(PlotBase) :
         name = None,
         bin_range = None,
         bin_width = None,
+        bin_edges = None,
         nbins = None,
         xmin = None,
         xmax = None,
@@ -202,6 +205,14 @@ class Plot1D(PlotBase) :
         self.xmin, self.xmax, self.ymin, self.ymax = self.determine_range(bin_range)
         if nbins or bin_width:
             self.nbins = determine_nbins(self.xmax, self.xmin, bin_width, self.variable) if bin_width else nbins
+        
+        assert bool(bin_edges) + bool(nbins) + bool(bin_width) <= 1, (
+                "ERROR Plot1D :: Only provide one bin value option")
+        if bin_edges:
+            bin_range = [bin_edges[0], bin_edges[-1]]
+        self.xmin, self.xmax, self.ymin, self.ymax = self.determine_range(bin_range)
+        if bin_range or nbins or bin_width:
+            self.nbins, self.bin_edges = determine_bins(bin_edges, bin_width, nbins, self.xmin, self.xmax, variable)
 
     def bin_width(self):
         return (self.xmax - self.xmin) / self.nbins
@@ -512,6 +523,8 @@ class Plot2D(PlotBase) :
         xbin_width = None, # Can specify to override nbins
         nxbins = 20,
         nybins = 20,
+        xbin_edges = [],
+        ybin_edges = [],
         doLogZ = None,
         doNorm = False,
         add_overflow = False,
@@ -539,21 +552,16 @@ class Plot2D(PlotBase) :
         self.ptype = ptype
 
         # Properties
-
+        if xbin_edges and ybin_edges:
+            bin_range = [xbin_edges[0], xbin_edges[-1], 
+                         ybin_edges[0], ybin_edges[-1]]
         bin_ranges = self.determine_range(bin_range)
         self.xmin, self.xmax = bin_ranges[0:2]
         self.ymin, self.ymax = bin_ranges[2:4]
         self.zmin, self.zmax = bin_ranges[4:6]
 
-        if xbin_width:
-            self.nxbins = determine_nbins(self.xmax, self.xmin, xbin_width, self.xvariable)
-        else:
-            self.nxbins = nxbins
-
-        if ybin_width:
-            self.nybins = determine_nbins(self.ymax, self.ymin, ybin_width, self.xvariable)
-        else:
-            self.nybins = nybins
+        self.nxbins, self.xbin_edges = determine_bins(xbin_edges, xbin_width, nxbins, self.xmin, self.xmax, xvariable)
+        self.nybins, self.ybin_edges = determine_bins(ybin_edges, ybin_width, nybins, self.ymin, self.ymax, yvariable)
 
         self.xunits = xunits
         self.yunits = yunits
@@ -801,6 +809,9 @@ class Plot3D(PlotBase) :
         xbin_width = None, # Can specify to override nbins
         ybin_width = None, # Can specify to override nbins
         zbin_width = None, # Can specify to override nbins
+        xbin_edges = None, # Can specify to override nbins
+        ybin_edges = None, # Can specify to override nbins
+        zbin_edges = None, # Can specify to override nbins
         nxbins = 20,
         nybins = 20,
         nzbins = 20,
@@ -825,25 +836,18 @@ class Plot3D(PlotBase) :
 
         # Properties
 
+        if xbin_edges and ybin_edges and zbin_edges:
+            bin_range = [xbin_edges[0], xbin_edges[-1], 
+                         ybin_edges[0], ybin_edges[-1],
+                         zbin_edges[0], zbin_edges[-1]]
         self.xmin, self.xmax = bin_range[0:2]
         self.ymin, self.ymax = bin_range[2:4]
         self.zmin, self.zmax = bin_range[4:6]
 
-        if xbin_width:
-            self.nxbins = determine_nbins(self.xmax, self.xmin, xbin_width, self.xvariable)
-        else:
-            self.nxbins = nxbins
+        self.nxbins, self.xbin_edges = determine_bins(xbin_edges, xbin_width, nxbins, self.xmin, self.xmax, xvariable)
+        self.nybins, self.ybin_edges = determine_bins(ybin_edges, ybin_width, nybins, self.ymin, self.ymax, yvariable)
+        self.nzbins, self.zbin_edges = determine_bins(zbin_edges, zbin_width, nzbins, self.zmin, self.zmax, zvariable)
 
-        if ybin_width:
-            self.nybins = determine_nbins(self.ymax, self.ymin, ybin_width, self.xvariable)
-        else:
-            self.nybins = nybins
-
-        if zbin_width:
-            self.nzbins = determine_nbins(self.zmax, self.zmin, zbin_width, self.zvariable)
-        else:
-            self.nxbins = nxbins
-        
         self.xunits = xunits
         self.yunits = yunits
         self.zunits = zunits
@@ -926,6 +930,18 @@ def determine_nbins(ax_max, ax_min, bin_width, variable = "?", update_range = Tr
 
     return nbins
 
+def determine_bins(edges, width, nbins, lo, hi, var):
+    assert edges or width or nbins
+    # If edges are not provided calculate them
+    if not edges:
+        # If a bin width is requested, calculate the required number of bins
+        if width:
+            nbins = determine_nbins(hi, lo, width, var)
+        
+        edges = pu.determine_bin_edges(lo, hi, nbins)
+    else:
+        nbins = len(edges) - 1
+    return nbins, array('d', edges)
 ################################################################################
 # TPad handler classes
 ################################################################################
