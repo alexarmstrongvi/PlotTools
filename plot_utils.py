@@ -472,11 +472,90 @@ def make_rebinned_th2f(hist, xbins=None, ybins=None, name=''):
     hnew.SetName(old_name)
     return hnew
 
+def make_rebinned_th3(hist, xbins=None, ybins=None, zbins=None, name=''):
+    #NOTE: overwrites hist if name is the same as hist.GetName() or name is not provided
+    # else it returns a new histogram
+    if not xbins:
+        xbins = array('d',get_bin_edges(hist.GetXaxis()))
+    if not ybins:
+        ybins = array('d', get_bin_edges(hist.GetYaxis()))
+    if not zbins:
+        zbins = array('d', get_bin_edges(hist.GetZaxis()))
+    nx = len(xbins) - 1
+    ny = len(ybins) - 1
+    nz = len(zbins) - 1
+    old_name = name if name else hist.GetName()
+    name = name + 'tmp'
+    hnew = ROOT.TH3F(name, hist.GetTitle(), nx,xbins,ny,ybins,nz,zbins)
+    xaxis = hist.GetXaxis()
+    yaxis = hist.GetYaxis()
+    zaxis = hist.GetZaxis()
+    for ibin in range(0, xaxis.GetNbins()+1):
+        for jbin in range(0, yaxis.GetNbins()+1):
+            for kbin in range(0, zaxis.GetNbins()+1):
+                xval = xaxis.GetBinCenter(ibin)
+                yval = yaxis.GetBinCenter(jbin)
+                zval = zaxis.GetBinCenter(kbin)
+                bin_val = hist.GetBinContent(ibin, jbin, kbin)
+                hnew.Fill(xval, yval, zval, bin_val)
+
+    if old_name == hist.GetName() or not name:
+        hist.Delete()
+    hnew.SetName(old_name)
+    return hnew
+
 def hist_to_dict(hist, add_overflow=False, bin_range_keys=False):
     # Returns a dict of the form dict[xbin][ybin] = bin value
     # Options to include overflow and underflow bins or use
     # bin range (e.g. "1.30 - 2.41"). Precision is currently hard coded 
-    if isinstance(hist, ROOT.TH2):
+    if isinstance(hist, ROOT.TH3):
+        h_dict = OrderedDict()
+        xaxis = hist.GetXaxis()
+        yaxis = hist.GetYaxis()
+        zaxis = hist.GetZaxis()
+        nxbins = xaxis.GetNbins()+1
+        nybins = yaxis.GetNbins()+1
+        nzbins = zaxis.GetNbins()+1
+        for xbin in range(0, nxbins + 1):
+            for ybin in range(0, nybins + 1):
+                for zbin in range(0, nzbins + 1):
+                    if bin_range_keys:
+                        xbin_low = xaxis.GetBinLowEdge(xbin)
+                        xbin_high = xaxis.GetBinUpEdge(xbin)
+                        ybin_low = yaxis.GetBinLowEdge(ybin)
+                        ybin_high = yaxis.GetBinUpEdge(ybin)
+                        zbin_low = zaxis.GetBinLowEdge(zbin)
+                        zbin_high = zaxis.GetBinUpEdge(zbin)
+                        if xbin == nxbins:
+                            xkey = "> %.2f" % xbin_low 
+                        elif xbin == 0:
+                            xkey = "< %.2f" % xbin_high 
+                        else:
+                            xkey = "%.2f-%.2f" % (xbin_low, xbin_high) 
+                        if ybin == nybins:
+                            ykey = "> %.2f" % ybin_low 
+                        elif ybin == 0:
+                            ykey = "< %.2f" % ybin_high 
+                        else:
+                            ykey = "%.2f-%.2f" % (ybin_low, ybin_high) 
+                        if zbin == nzbins:
+                            zkey = "> %.2f" % zbin_low 
+                        elif zbin == 0:
+                            zkey = "< %.2f" % zbin_high 
+                        else:
+                            zkey = "%.2f-%.2f" % (zbin_low, zbin_high) 
+                    else:
+                        xkey = str(xbin)
+                        ykey = str(ybin)
+                        zkey = str(zbin)
+                    bin_value = hist.GetBinContent(xbin, ybin, zbin)
+                    underflow = (xbin == 0) or (ybin == 0) or (zbin == 0)
+                    overflow = (xbin == nxbins) or (ybin == nybins) or (zbin == nzbins)
+                    if (underflow or overflow) and not add_overflow: continue
+                    if zkey not in h_dict: h_dict[zkey] = OrderedDict()
+                    if ykey not in h_dict[zkey]: h_dict[zkey][ykey] = OrderedDict()
+                    h_dict[zkey][ykey][xkey] = bin_value
+    elif isinstance(hist, ROOT.TH2):
         h_dict = OrderedDict()
         xaxis = hist.GetXaxis()
         yaxis = hist.GetYaxis()
@@ -540,12 +619,31 @@ def print_hist(hist, tablefmt='psql'):
     hist_dict_range = hist_to_dict(hist, add_overflow=True, bin_range_keys=True)
     if not hist_dict_bins or not hist_dict_range: return ""
 
-    if isinstance(hist, ROOT.TH2):
+    if isinstance(hist, ROOT.TH3):
+        tex_string = ""
+        for z_bin, z_range in zip(hist_dict_bins, hist_dict_range):
+            headers = [""]
+            table = []
+            tex_string += "(%s) %s\n" % (z_bin, z_range)
+            # Fill headers and row lables
+            if not table:
+                for y_bin, y_range in zip(hist_dict_bins[z_bin], hist_dict_range[z_range]):
+                    table.append(["(%s) %s" % (y_bin, y_range)])
+                    for x_bin, x_range in zip(hist_dict_bins[z_bin][y_bin], hist_dict_range[z_range][y_range]):
+                        header = "(%s) %s" % (x_bin, x_range)
+                        if header not in headers: headers.append(header)
+
+            # Fill table with values
+            for row, (y_bin, y_range) in enumerate(zip(hist_dict_bins[z_bin], hist_dict_range[z_range])):
+                for x_bin, x_range in zip(hist_dict_bins[z_bin][y_bin], hist_dict_range[z_range][y_range]):
+                    table[row].append(hist_dict_bins[z_bin][y_bin][x_bin])
+            tex_string += tabulate(table, headers=headers, tablefmt=tablefmt)        
+            tex_string += '\n\n'
+    elif isinstance(hist, ROOT.TH2):
         headers = [""]
         table = []
         for x_bin, x_range in zip(hist_dict_bins, hist_dict_range):
             headers.append("(%s) %s" % (x_bin, x_range))
-            column = []
             if not table:
                 # Fill first column of table with y-labels
                 for y_bin, y_range in zip(hist_dict_bins[x_bin], hist_dict_range[x_range]):

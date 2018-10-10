@@ -24,6 +24,8 @@ import ROOT as r
 r.TCanvas.__init__._creates = False
 
 import PlotTools.plot_utils as pu
+#import AtlasStyle #TODO: Can't load it correctly
+#SetAtlasStyle()
 
 ################################################################################
 # Enumerating plot types
@@ -35,8 +37,9 @@ class Types(Enum):
     double_ratio = 3
     comparison = 4
     two_dim = 5
-    profile = 6
-    undefined = 7
+    three_dim = 6
+    profile = 7
+    undefined = 8
 ################################################################################
 # Plot Classes
 ################################################################################
@@ -96,6 +99,7 @@ class Plot1D(PlotBase) :
         leg_is_left = False,
         leg_is_bottom_right = False,
         leg_is_bottom_left = False,
+        xcut_is_max = True, #toggle for CutScan1D hists
         ptype = Types.default,
         ) :
         '''
@@ -106,14 +110,13 @@ class Plot1D(PlotBase) :
         # Descriptors
         self.region = region
         self.variable = variable
-        self.name = name if name else self.determine_name(region, variable)
+        self.name = name if name else determine_name(region, variable)
         self.suffix = suffix
 
-        # Objects
-        self.pads = None
 
         # Flags
         self.is2D = False
+        self.is3D = False
         if doLogY: self.doLogY = doLogY
         self.doNorm = doNorm
 
@@ -122,7 +125,11 @@ class Plot1D(PlotBase) :
         self.leg_is_left = leg_is_left
         self.leg_is_bottom_right = leg_is_bottom_right
         self.leg_is_bottom_left = leg_is_bottom_left
+        self.xcut_is_max = xcut_is_max
         self.ptype = ptype
+        
+        # Objects
+        self.pads = None
 
         self.xmin, self.xmax, self.ymin, self.ymax = self.determine_range(bin_range)
 
@@ -171,7 +178,7 @@ class Plot1D(PlotBase) :
         if name:
             self.name = name
         elif not name and (region or variable):
-            self.name = self.determine_name(region, variable)
+            self.name = determine_name(region, variable)
 
 
         # Flags
@@ -267,10 +274,6 @@ class Plot1D(PlotBase) :
 
         return xlabel, ylabel
 
-    def determine_name(self, region, variable):
-        var_stripped = pu.strip_for_root_name(variable)
-        return "%s_%s"%(region, var_stripped)
-
     def set_bin_labels(self, axis_hist):
         '''
         Add arbitrary labels to TH1 bins
@@ -312,6 +315,10 @@ class Plot1D(PlotBase) :
     def setDoubleRatioPads(self, name) :
         self.pads = DoubleRatioPads(name)
         self.ptype = Types.double_ratio
+
+    def setCutScanPads1D(self, name):
+        self.pads = CutScanPads1D(name)
+        #self.ptype = Types.cut_scan_1d #Do I need this?
 
     def make_data_mc_stack_plot(self, reg_name, hists, suffix=''):
         # Get Canvas
@@ -415,10 +422,60 @@ class Plot1D(PlotBase) :
 
         self.save_plot(can, suffix)
 
+    def make_cutscan1d_plot(self, hists, reg_name, roc_curve=False):
+        # Get Canvas
+        pads = self.pads
+        pads.hist_pad.cd()
+        if self.doLogY : pads.hist_pad.SetLogy(True)
+
+        # Make signal background overlay
+        hists.axis.Draw()
+        hists.signal.SetFillColor(0)
+        hists.signal.SetLineWidth(3)
+        hists.signal.Draw("HIST SAME")
+        hists.bkgd.SetFillColor(0)
+        hists.bkgd.SetLineWidth(3)
+        hists.bkgd.Draw("HIST SAME")
+        hists.hist_leg.Draw()
+        pu.draw_atlas_label('Internal','Higgs LFV', reg_name)
+        
+        # Reset axis
+        pads.hist_pad.RedrawAxis()
+        pads.hist_pad.SetTickx()
+        pads.hist_pad.SetTicky()
+        pads.hist_pad.Update()
+
+        # Add Eff/Rej plot
+        pads.eff_pad.cd()
+        hists.signal_eff.SetFillColor(0)
+        hists.signal_eff.SetLineWidth(3)
+        hists.signal_eff.SetLineWidth(3)
+        hists.signal_eff.GetYaxis().SetLabelOffset(0.85*hists.signal_eff.GetYaxis().GetLabelOffset())
+        hists.signal_eff.Draw("SAME")
+        hists.bkgd_rej.SetFillColor(0)
+        hists.bkgd_rej.SetLineWidth(3)
+        hists.bkgd_rej.Draw("SAME")
+        hists.eff_leg.Draw()
+
+        # Add S/B plot
+        pads.s_over_b_pad.cd()
+        hists.s_over_b.SetFillColor(hists.s_over_b.GetLineColor())
+        hists.s_over_b.GetYaxis().SetLabelOffset()
+        hists.s_over_b.Draw("SAME")
+
+        # Add ROC Curve
+        pads.roc_pad.cd()
+        #pads.roc_pad.SetLogy(True)
+        hists.roc_graph.Draw("AC*")
+
+        # Save the histogram
+        self.save_plot(pads.canvas, suffix="cutScan")
+
+
     def Print(self) :
         print "Plot1D    plot: %s  (region: %s  var: %s)"%(
             self.name, self.region, self.variable)
-
+ 
 class Plot2D(PlotBase) :
     xmin = 0
     xmax = 50.0
@@ -466,7 +523,7 @@ class Plot2D(PlotBase) :
         self.region = region
         self.xvariable = xvariable
         self.yvariable = yvariable
-        self.name = name if name else self.determine_name(region, xvariable, yvariable)
+        self.name = name if name else determine_name(region, xvariable, yvariable)
         self.suffix = suffix
 
         # Objects
@@ -474,6 +531,7 @@ class Plot2D(PlotBase) :
 
         #Flags
         self.is2D = True
+        self.is3D = False
         if doLogZ: self.doLogZ = doLogZ
         self.doNorm = doNorm
         self.add_overflow = add_overflow
@@ -510,7 +568,7 @@ class Plot2D(PlotBase) :
         self.region = region
         self.xvariable = xvar
         self.yvariable = yvar
-        self.name = self.determine_name(region, xvar, yvar)
+        self.name = determine_name(region, xvar, yvar)
 
 
     def xbin_width(self):
@@ -591,11 +649,6 @@ class Plot2D(PlotBase) :
 
         return xlabel, ylabel, zlabel
 
-    def determine_name(self, region, xvariable, yvariable):
-        xvar_stripped = pu.strip_for_root_name(xvariable)
-        yvar_stripped = pu.strip_for_root_name(yvariable)
-        return "%s_%s_%s"%(region, xvar_stripped, yvar_stripped)
-
     def setDefaultPads(self, name) :
         self.pads = Pads(name)
         self.ptype = Types.default
@@ -603,6 +656,9 @@ class Plot2D(PlotBase) :
     def set2DPads(self, name) :
         self.pads = Pads(name)
         self.ptype = Types.two_dim
+    
+    def setCutScanPads2D(self, name):
+        self.pads = CutScanPads2D(name)
 
     def setTProfilePads(self, name) :
         self.pads = Pads(name)
@@ -634,6 +690,72 @@ class Plot2D(PlotBase) :
         self.save_plot(can, suffix)
         # self.pads.canvas.Clear()
 
+    def make_cutscan2d_plot(self, hists, reg_name, roc_curve=False):
+        # Get Canvas
+        pads = self.pads
+        pads.sig_hist_pad.cd()
+        if self.doLogZ : pads.sig_hist_pad.SetLogz(True)
+        hists.axis.Draw()
+        hists.signal.SetFillColor(0)
+        hists.signal.SetLineWidth(3)
+        hists.signal.Draw("COLZ SAME")
+        pu.draw_text(x=0.2, y=0.9, text="Signal: %s" % hists.signal.GetTitle())
+
+        pads.bkgd_hist_pad.cd()
+        if self.doLogZ : pads.bkgd_hist_pad.SetLogz(True)
+        hists.axis.Draw()
+        hists.bkgd.SetFillColor(0)
+        hists.bkgd.SetLineWidth(3)
+        hists.bkgd.Draw("COLZ SAME")
+        pu.draw_text(x=0.2, y=0.9, text="Bkgd: %s" % hists.bkgd.GetTitle())
+        
+        # Reset axis
+        hists.axis.SetTitle("")
+        pads.sig_hist_pad.RedrawAxis()
+        pads.sig_hist_pad.SetTickx()
+        pads.sig_hist_pad.SetTicky()
+        pads.sig_hist_pad.Update()
+        pads.bkgd_hist_pad.RedrawAxis()
+        pads.bkgd_hist_pad.SetTickx()
+        pads.bkgd_hist_pad.SetTicky()
+        pads.bkgd_hist_pad.Update()
+
+        # Add Eff/Rej plot
+        pads.sig_eff_pad.cd()
+        hists.axis.Draw()
+        hists.signal_eff.SetFillColor(0)
+        hists.signal_eff.SetLineWidth(3)
+        hists.signal_eff.SetLineWidth(3)
+        hists.signal_eff.GetZaxis().SetTitle("% Acceptence")
+        hists.signal_eff.Draw("COLZ SAME")
+        pads.sig_eff_pad.RedrawAxis()
+        pads.sig_eff_pad.Update()
+
+        pads.bkgd_eff_pad.cd()
+        hists.axis.Draw()
+        hists.bkgd_rej.SetFillColor(0)
+        hists.bkgd_rej.SetLineWidth(3)
+        hists.bkgd_rej.GetZaxis().SetTitle("% Rejection")
+        hists.bkgd_rej.Draw("COLZ SAME")
+        pads.bkgd_eff_pad.RedrawAxis()
+        pads.bkgd_eff_pad.Update()
+
+        # Add S/B plot
+        pads.s_over_b_pad.cd()
+        hists.axis.Draw()
+        hists.s_over_b.SetFillColor(hists.s_over_b.GetLineColor())
+        hists.s_over_b.Draw("COLZ SAME")
+        pads.s_over_b_pad.RedrawAxis()
+        pads.s_over_b_pad.Update()
+
+        # Add ROC Curve
+        pads.roc_pad.cd()
+        #pads.roc_pad.SetLogy(True)
+        hists.roc_graph.Draw("A*")
+
+        # Save the histogram
+        self.save_plot(pads.canvas, suffix="cutScan")
+
     def reformat_zaxis(self):
         # Get maximum histogram z-value
         maxz = self.hist.GetMaximum()
@@ -660,6 +782,98 @@ class Plot2D(PlotBase) :
     def Print(self) :
         print "Plot2D    plot: %s  (region: %s  xVar: %s  yVar: %s)"%(
             self.name, self.region, self.xVariable, self.yVariable)
+
+class Plot3D(PlotBase) :
+    def __init__(self,
+        region = "",
+        name = "",
+        xvariable = "",
+        yvariable = "",
+        zvariable = "",
+        xlabel = "x-Label",
+        xunits = "",
+        ylabel = "y-Label",
+        yunits = "",
+        zlabel = "z-Label",
+        zunits = "",
+        suffix = "",
+        bin_range = [], # [x0, x1, y0, y1, z0, z1]
+        xbin_width = None, # Can specify to override nbins
+        ybin_width = None, # Can specify to override nbins
+        zbin_width = None, # Can specify to override nbins
+        nxbins = 20,
+        nybins = 20,
+        nzbins = 20,
+        add_overflow = False,
+        add_underflow = False,
+        ptype = Types.three_dim,
+        ) :
+        # Descriptors
+        self.region = region
+        self.xvariable = xvariable
+        self.yvariable = yvariable
+        self.zvariable = zvariable
+        self.name = name if name else determine_name(region, xvariable, yvariable, zvariable)
+        self.suffix = suffix
+
+        #Flags
+        self.is2D = False
+        self.is3D = True
+        self.add_overflow = add_overflow
+        self.add_underflow = add_underflow
+        self.ptype = ptype
+
+        # Properties
+
+        self.xmin, self.xmax = bin_range[0:2]
+        self.ymin, self.ymax = bin_range[2:4]
+        self.zmin, self.zmax = bin_range[4:6]
+
+        if xbin_width:
+            self.nxbins = determine_nbins(self.xmax, self.xmin, xbin_width, self.xvariable)
+        else:
+            self.nxbins = nxbins
+
+        if ybin_width:
+            self.nybins = determine_nbins(self.ymax, self.ymin, ybin_width, self.xvariable)
+        else:
+            self.nybins = nybins
+
+        if zbin_width:
+            self.nzbins = determine_nbins(self.zmax, self.zmin, zbin_width, self.zvariable)
+        else:
+            self.nxbins = nxbins
+        
+        self.xunits = xunits
+        self.yunits = yunits
+        self.zunits = zunits
+        self.xlabel, self.ylabel, self.zlabel = self.determine_labels(xlabel, ylabel, zlabel)
+
+        self.rebin_xbins = []
+        self.rebin_ybins = []
+        self.rebin_zbins = []
+
+    def update(self, region, xvar, yvar, zvar):
+        self.region = region
+        self.xvariable = xvar
+        self.yvariable = yvar
+        self.zvariable = zvar
+        self.name = determine_name(region, xvar, yvar, zvar)
+
+    def determine_labels(self, xlabel, ylabel, zlabel):
+        if self.xunits:
+            xlabel = "%s [%s]"%(xlabel, self.xunits)
+        if self.yunits:
+            ylabel = "%s [%s]"%(ylabel, self.yunits)
+        if self.zunits:
+            zlabel = "%s [%s]"%(zlabel, self.zunits)
+
+        return xlabel, ylabel, zlabel
+
+def determine_name(region, *argv):
+    ''' Determine default plot name from variables and region'''
+    vars_stripped = [pu.strip_for_root_name(var) for var in argv]
+    return "_".join([region] + vars_stripped)
 
 def determine_nbins(ax_max, ax_min, bin_width, variable = "?", update_range = True):
     '''
@@ -716,9 +930,9 @@ def determine_nbins(ax_max, ax_min, bin_width, variable = "?", update_range = Tr
 # TPad handler classes
 ################################################################################
 class Pads :
-    def __init__(self, name):
+    def __init__(self, name, width=800, height=600):
         self.name = "c_" + name
-        self.canvas = r.TCanvas(self.name, self.name, 800, 600)
+        self.canvas = r.TCanvas(self.name, self.name, width, height)
         self.set_pad_dimensions()
 
     def set_pad_dimensions(self):
@@ -846,8 +1060,6 @@ class DoubleRatioPads :
         mid.SetTopMargin(0.05)
         dn.SetTopMargin(0.02)
 
-
-
         up.Draw()
         mid.Draw()
         dn.Draw()
@@ -858,3 +1070,194 @@ class DoubleRatioPads :
         self.middle_pad = mid
         self.lower_pad = dn
 
+class CutScanPads1D(Pads):
+    def __init__(self, name, width=600, height=1200):
+        self.name = "c_" + name
+        self.canvas = r.TCanvas(self.name, self.name, width, height)
+        self.hist_pad = r.TPad("hist_pad", "hist_pad", 0.0, 0.0, 1.0, 1.0)
+        self.eff_pad = r.TPad("eff_pad", "eff_pad", 0.0, 0.0, 1.0, 1.0)
+        self.s_over_b_pad = r.TPad("s_over_b_pad", "s_over_b_pad", 0.0, 0.0, 1.0, 1.0)
+        self.roc_pad = r.TPad("roc_pad", "roc_pad", 0.0, 0.0, 1.0, 1.0)
+        self.set_pad_dimensions()
+
+    def set_pad_dimensions(self):
+        can = self.canvas
+        up  = self.hist_pad
+        mid1 = self.eff_pad
+        mid2 = self.s_over_b_pad
+        dn = self.roc_pad
+
+        # Define percentage heigh of each pad
+        can.cd()
+        up_h= 0.30
+        mid1_h= 0.20
+        mid2_h= 0.20
+        dn_h= 0.30
+
+        top = 1.0
+        div1 = top - up_h
+        div2 = top - up_h - mid1_h
+        div3 = top - up_h - mid1_h - mid2_h
+        bottom = 0 
+
+        up.SetPad(0.0, div1, 1.0, top)
+        mid1.SetPad(0.0, div2, 1.0, div1)
+        mid2.SetPad(0.0, div3, 1.0, div2)
+        dn.SetPad(0.0, bottom, 1.0, dn_h)
+
+        #up.SetGrid(0)
+        #up.SetTickx(0)
+        mid1.SetGrid(1)
+        #mid1.SetTickx(0)
+        mid2.SetGrid(1)
+        #mid2.SetTicky(0)
+        dn.SetGrid(1)
+        #dn.SetTicky(0)
+
+        up.SetFrameFillColor(0)
+        up.SetFillColor(0)
+
+        # set right margins
+        right_margin = 0.05
+        up .SetRightMargin(right_margin)
+        mid1.SetRightMargin(right_margin)
+        mid2.SetRightMargin(right_margin)
+        dn .SetRightMargin(right_margin)
+
+        # set left margins
+        up .SetLeftMargin(0.14)
+        mid1.SetLeftMargin(0.14)
+        mid2.SetLeftMargin(0.14)
+        dn .SetLeftMargin(0.14)
+
+        # bottom margins
+        up.SetBottomMargin(0.01)
+        mid1.SetBottomMargin(0.01)
+        mid2.SetBottomMargin(0.2)
+        dn.SetBottomMargin(0.15)
+
+        # set top margins
+        up.SetTopMargin(0.09)
+        mid1.SetTopMargin(0.01)
+        mid2.SetTopMargin(0.01)
+        dn.SetTopMargin(0.1)
+       
+        # Add pads to main canvas
+        up.Draw()
+        mid1.Draw()
+        mid2.Draw()
+        dn.Draw()
+        can.Update()
+
+        self.canvas = can 
+        self.hist_pad = up  
+        self.eff_pad = mid1 
+        self.s_over_b_pad = mid2 
+        self.roc_pad = dn 
+
+class CutScanPads2D(Pads):
+    def __init__(self, name, width=600, height=1200):
+        self.name = "c_" + name
+        self.canvas = r.TCanvas(self.name, self.name, width, height)
+        self.sig_hist_pad = r.TPad("sig_hist_pad", "sig_hist_pad", 0.0, 0.0, 1.0, 1.0)
+        self.bkgd_hist_pad = r.TPad("bkgd_hist_pad", "bkgd_hist_pad", 0.0, 0.0, 1.0, 1.0)
+        self.sig_eff_pad = r.TPad("sig_eff_pad", "sig_eff_pad", 0.0, 0.0, 1.0, 1.0)
+        self.bkgd_eff_pad = r.TPad("bkgd_eff_pad", "bkgd_eff_pad", 0.0, 0.0, 1.0, 1.0)
+        self.s_over_b_pad = r.TPad("s_over_b_pad", "s_over_b_pad", 0.0, 0.0, 1.0, 1.0)
+        self.roc_pad = r.TPad("roc_pad", "roc_pad", 0.0, 0.0, 1.0, 1.0)
+        self.set_pad_dimensions()
+
+    def set_pad_dimensions(self):
+        can = self.canvas
+        up_l  = self.sig_hist_pad
+        up_r  = self.bkgd_hist_pad
+        mid1_l = self.sig_eff_pad
+        mid1_r = self.bkgd_eff_pad
+        mid2 = self.s_over_b_pad
+        dn = self.roc_pad
+
+        # Define percentage heigh of each pad
+        can.cd()
+        up_h= 0.25
+        mid1_h= 0.25
+        mid2_h= 0.25
+        dn_h= 0.25
+
+        top = 1.0
+        div1 = top - up_h
+        div2 = top - up_h - mid1_h
+        div3 = top - up_h - mid1_h - mid2_h
+        bottom = 0 
+
+        up_l.SetPad(0.0, div1, 0.5, top)
+        up_r.SetPad(0.5, div1, 1.0, top)
+        mid1_l.SetPad(0.0, div2, 0.5, div1)
+        mid1_r.SetPad(0.5, div2, 1.0, div1)
+        mid2.SetPad(0.0, div3, 1.0, div2)
+        dn.SetPad(0.0, bottom, 1.0, dn_h)
+
+        #up.SetGrid(0)
+        #up.SetTickx(0)
+        mid1_l.SetGrid(1)
+        mid1_r.SetGrid(1)
+        #mid1.SetTickx(0)
+        mid2.SetGrid(1)
+        #mid2.SetTicky(0)
+        dn.SetGrid(1)
+        #dn.SetTicky(0)
+
+        up_l.SetFrameFillColor(0)
+        up_l.SetFillColor(0)
+        up_r.SetFrameFillColor(0)
+        up_r.SetFillColor(0)
+
+        # set right margins
+        right_margin = 0.2
+        up_l.SetRightMargin(right_margin)
+        up_r.SetRightMargin(right_margin)
+        mid1_l.SetRightMargin(right_margin)
+        mid1_r.SetRightMargin(right_margin)
+        mid2.SetRightMargin(right_margin)
+        dn .SetRightMargin(0.1)
+
+        # set left margins
+        left_margin = 0.2
+        up_l.SetLeftMargin(left_margin)
+        up_r.SetLeftMargin(left_margin)
+        mid1_l.SetLeftMargin(left_margin)
+        mid1_r.SetLeftMargin(left_margin)
+        mid2.SetLeftMargin(0.15)
+        dn.SetLeftMargin(0.15)
+
+        # bottom margins
+        up_l.SetBottomMargin(0.01)
+        up_r.SetBottomMargin(0.01)
+        mid1_l.SetBottomMargin(0.15)
+        mid1_r.SetBottomMargin(0.15)
+        mid2.SetBottomMargin(0.15)
+        dn.SetBottomMargin(0.2)
+
+        # set top margins
+        up_l.SetTopMargin(0.15)
+        up_r.SetTopMargin(0.15)
+        mid1_l.SetTopMargin(0.01)
+        mid1_r.SetTopMargin(0.01)
+        mid2.SetTopMargin(0.01)
+        dn.SetTopMargin(0.1)
+       
+        # Add pads to main canvas
+        up_l.Draw()
+        up_r.Draw()
+        mid1_l.Draw()
+        mid1_r.Draw()
+        mid2.Draw()
+        dn.Draw()
+        can.Update()
+
+        self.canvas = can 
+        self.sig_hist_pad = up_l  
+        self.bkgd_hist_pad = up_r  
+        self.sig_eff_pad = mid1_l 
+        self.bkgd_eff_pad = mid1_r 
+        self.s_over_b_pad = mid2 
+        self.roc_pad = dn 

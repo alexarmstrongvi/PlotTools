@@ -110,9 +110,9 @@ preselection.compare_regions.append(REGIONS[-1])
 # Baseline regions
 REGIONS.append(Region("baseline", "Baseline"))
 baseline_sel = preselection_sel
-baseline_sel += ' && nBJets==0'
+baseline_sel += ' && nBJets == 0'
 baseline_sel += ' && l_pt[0] >= 45'
-baseline_sel += ' && l_pt[1] >= 10'
+baseline_sel += ' && l_pt[1] >= 15'
 baseline_sel += ' && (30 < MLL && MLL < 150)'
 baseline_sel += ' && ( !'+mue+' || el1pT_trackclus_ratio < 1.2)'
 
@@ -162,12 +162,7 @@ base.compare_regions.append(REGIONS[-1])
 ################################################################################
 
 # ttbar 
-top_sel = preselection_sel
-top_sel += ' && nBJets > 0'
-top_sel += ' && l_pt[0] >= 45'
-top_sel += ' && l_pt[1] >= 10'
-#top_sel += ' && (30 < MLL && MLL < 150)'
-#top_sel += ' && ( !'+mue+' || el1pT_trackclus_ratio < 1.2)'
+top_sel = ggH_sel.replace("nBJets == 0","nBJets > 0")
 REGIONS.append(Region("top_CR", "Top CR"))
 REGIONS[-1].tcut = top_sel
 base = REGIONS[-1]
@@ -177,15 +172,8 @@ REGIONS.append(base.build_channel('mue', '#mue', '$\mu e$', mue))
 base.compare_regions.append(REGIONS[-1])
 
 # Z (->tautau) + jets
-ztt_sel = preselection_sel
-ztt_sel += ' && nBJets==0'
-ztt_sel += ' && l_pt[0] <= 45' #Orthgonal to baseline region
-ztt_sel += ' && l_pt[1] >= 10'
-ztt_sel += ' && (30 < MLL && MLL < 150)'
-ztt_sel += ' && drll > 2.9'
-ztt_sel += ' && DphiLep1MET < 1'
-ztt_sel += ' && taulep1_pT_ratio > 0.5'
-ztt_sel += ' && l_mT[1] < 40'
+ztt_sel = ggH_sel.replace("l_pt[0] >= 45","l_pt[0] < 45")
+ztt_sel += ' && (drll > 2.5 && dpt_ll < 25)'
 
 REGIONS.append(Region("ztt_CR", "Z->tautau CR","$Z(\\rightarrow\\tau\\tau)$ + jets"))
 REGIONS[-1].tcut = ztt_sel
@@ -196,16 +184,7 @@ REGIONS.append(base.build_channel('mue', '#mue', '$\mu e$', mue))
 base.compare_regions.append(REGIONS[-1])
 
 #W + jets (moved to main conf)
-#wjets_sel = preselection_sel
-#wjets_sel += ' && nBJets==0'
-#wjets_sel += ' && l_pt[0] <= 45' #Orthgonal to baseline region
-#wjets_sel += ' && l_pt[1] >= 10'
-#wjets_sel += ' && (30 < MLL && MLL < 150)'
-#wjets_sel += ' && drll <= 2.9'
-##wjets_sel += ' && DphiLep1MET < 1'
-##wjets_sel += ' && taulep1_pT_ratio > 0.5'
-##wjets_sel += ' && l_mT[1] < 40'
-#
+#wjets_sel = ztt_sel.replace('(drll > 2.5 && dpt_ll < 25)','!(drll > 2.5 && dpt_ll < 25)')
 #REGIONS.append(Region("wjets_CR", "W+jets CR","$W$ + jets"))
 #REGIONS[-1].tcut = wjets_sel
 #base = REGIONS[-1]
@@ -221,18 +200,19 @@ wz_cr_cut += " && 75 < Z_MLL && Z_MLL < 105"
 wz_cr_cut += ' && nBJets == 0'
 wz_cr_cut += ' && l_mT[2] > 50'
 REGIONS[-1].tcut = wz_cr_cut
-REGIONS.append(Region("wzCR_e", "WZ CR (e+Z)"))
-REGIONS[-1].tcut = wz_cr_cut + " && " + SF_OS + " && " + lep2_e
-REGIONS.append(Region("wzCR_m", "WZ CR (m+Z)"))
-REGIONS[-1].tcut = wz_cr_cut + " && " + SF_OS + " && " + lep2_m
-REGIONS.append(Region("wzCR_eee", "WZ CR (e+ee)"))
-REGIONS[-1].tcut = wz_cr_cut + " && " + Z_ee + " && " + lep2_e
-REGIONS.append(Region("wzCR_emm", "WZ CR (e+mm)"))
-REGIONS[-1].tcut = wz_cr_cut + " && " + Z_mumu + " && " + lep2_e
-REGIONS.append(Region("wzCR_mee", "WZ CR (m+ee)"))
-REGIONS[-1].tcut = wz_cr_cut + " && " + Z_ee + " && " + lep2_m
-REGIONS.append(Region("wzCR_mmm", "WZ CR (m+mm)"))
-REGIONS[-1].tcut = wz_cr_cut + " && " + Z_mumu + " && " + lep2_m
+base = REGIONS[-1]
+REGIONS.append(base.build_channel('e','e+ll','$e+\ell\ell$', SF_OS + " && " + lep2_e))
+base.compare_regions.append(REGIONS[-1])
+REGIONS.append(base.build_channel('m','m+ll','$m+\ell\ell$', SF_OS + " && " + lep2_m))
+base.compare_regions.append(REGIONS[-1])
+REGIONS.append(base.build_channel('eee','e+ee','$e+ee$', Z_ee + " && " + lep2_e))
+base.compare_regions.append(REGIONS[-1])
+REGIONS.append(base.build_channel('emm','e+mm','$e+\mu\mu $', Z_mumu + " && " + lep2_e))
+base.compare_regions.append(REGIONS[-1])
+REGIONS.append(base.build_channel('mee','m+ee','$\mu +ee$', Z_ee + " && " + lep2_m))
+base.compare_regions.append(REGIONS[-1])
+REGIONS.append(base.build_channel('mmm','m+mm','$\mu +\mu\mu $', Z_mumu + " && " + lep2_m))
+base.compare_regions.append(REGIONS[-1])
 
 # Z(->ll) + jets
 zll_cr_base = "1"

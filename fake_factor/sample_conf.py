@@ -114,26 +114,25 @@ for num_den in [NUM_STR, DEN_STR]:
     ## Build the TChain/TTree for each sample
     # To remove sample from plot, comment out the line setting its TChain
     # Samples with empty TChains get removed below
-    data_dsids = g.groups['data15']+g.groups['data16']
     data_ntuple_dir2 = data_ntuple_dir[:-1] + '_' + num_den + "/"
     bkg_ntuple_dir2 = bkg_ntuple_dir[:-1] + '_' + num_den + "/"
 
-    data.set_chain_from_dsid_list(data_dsids, data_ntuple_dir2)
-    higgs.set_chain_from_dsid_list(g.groups['higgs'], bkg_ntuple_dir2)
-    top.set_chain_from_dsid_list(g.groups['top'], bkg_ntuple_dir2)
-    #ttbar.set_chain_from_dsid_list(g.groups['ttbar'], bkg_ntuple_dir2)
-    #stop.set_chain_from_dsid_list(g.groups['singletop'], bkg_ntuple_dir2)
-    #wtop.set_chain_from_dsid_list(g.groups['Wt'], bkg_ntuple_dir2)
-    ttbar_x.set_chain_from_dsid_list(g.groups['ttbarX'], bkg_ntuple_dir2)
-    VV.set_chain_from_dsid_list(g.groups['VV'], bkg_ntuple_dir2)
+    data.set_chain_from_dsid_list(g.groups['data'], data_ntuple_dir2)
+    #top.set_chain_from_dsid_list(g.groups['top'], bkg_ntuple_dir2)
+    ###ttbar.set_chain_from_dsid_list(g.groups['ttbar'], bkg_ntuple_dir2)
+    ###stop.set_chain_from_dsid_list(g.groups['singletop'], bkg_ntuple_dir2)
+    ###wtop.set_chain_from_dsid_list(g.groups['Wt'], bkg_ntuple_dir2)
+    #ttbar_x.set_chain_from_dsid_list(g.groups['ttbarX'], bkg_ntuple_dir2)
+    #VV.set_chain_from_dsid_list(g.groups['VV'], bkg_ntuple_dir2)
     VVV.set_chain_from_dsid_list(g.groups['VVV'], bkg_ntuple_dir2)
-    zll.set_chain_from_dsid_list(g.groups['zll'], bkg_ntuple_dir2)
-    #zee.set_chain_from_dsid_list(g.groups['zee'], bkg_ntuple_dir2)
-    #zmumu.set_chain_from_dsid_list(g.groups['zmumu'], bkg_ntuple_dir2)
-    ztt.set_chain_from_dsid_list(g.groups['ztt'], bkg_ntuple_dir2)
-    wjets.set_chain_from_dsid_list(g.groups['wjets'], bkg_ntuple_dir2)
-    wgamma.set_chain_from_dsid_list(g.groups['wgamma'], bkg_ntuple_dir2)
-    zgamma.set_chain_from_dsid_list(g.groups['zgamma'], bkg_ntuple_dir2)
+    #zll.set_chain_from_dsid_list(g.groups['zll'], bkg_ntuple_dir2)
+    zee.set_chain_from_dsid_list(g.groups['zee'], bkg_ntuple_dir2)
+    ###zmumu.set_chain_from_dsid_list(g.groups['zmumu'], bkg_ntuple_dir2)
+    #ztt.set_chain_from_dsid_list(g.groups['ztt'], bkg_ntuple_dir2)
+    #wjets.set_chain_from_dsid_list(g.groups['wjets'], bkg_ntuple_dir2)
+    #wgamma.set_chain_from_dsid_list(g.groups['wgamma'], bkg_ntuple_dir2)
+    #zgamma.set_chain_from_dsid_list(g.groups['zgamma'], bkg_ntuple_dir2)
+    #higgs.set_chain_from_dsid_list(g.groups['higgs'], bkg_ntuple_dir2)
 
 SAMPLES = [s for s in SAMPLES if s.is_setup()]
 assert SAMPLES, "ERROR :: No samples are setup"

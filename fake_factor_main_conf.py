@@ -26,6 +26,9 @@ ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
 eta_gt_1p45 = False
 eta_lt_1p45 = False
+njet_0 = False
+njet_1 = False
+njet_ge2 = False
 
 # Strings for plotting
 
@@ -55,6 +58,14 @@ if eta_lt_1p45:
     zjets_FF_CR += ' && fabs(l_eta[2]) < 1.45'
 elif eta_gt_1p45:
     zjets_FF_CR += ' && fabs(l_eta[2]) >= 1.45'
+
+if njet_0:
+    zjets_FF_CR += ' && n_jets == 0'
+elif njet_1:
+    zjets_FF_CR += ' && n_jets == 1'
+elif njet_ge2:
+    zjets_FF_CR += ' && n_jets >= 2'
+
 zjets_FF_truth_base = '(!isMC || (0 < l_truthClass[0] && l_truthClass[0] <= 2))' #Prompt Leading Lepton
 zjets_FF_truth_base += ' && (!isMC || (0 < l_truthClass[1] && l_truthClass[1] <= 2))' #Prompt Subleading Lepton
 zjets_FF_truth_num = zjets_FF_truth_base\
@@ -77,11 +88,17 @@ for num_den, num_den_sel in num_den_dict.iteritems():
 
         name = 'zjets_FF_CR%s_%s'%(num_den, chan)
         if eta_lt_1p45:
-            displayname = 'Z+jets CR (%s, |#eta| < 1.4)'%(chan_name)
+            chan_name += ', |#eta| < 1.4'
         elif eta_gt_1p45:
-            displayname = 'Z+jets CR (%s, |#eta| #ge 1.4)'%(chan_name)
-        else:
-            displayname = 'Z+jets CR (%s)'%(chan_name)
+            chan_name += ', |#eta| #ge 1.4'
+        if njet_0:
+            chan_name += ', N_{jets} = 0'
+        elif njet_1:
+            chan_name += ', N_{jets} = 1'
+        elif njet_ge2:
+            chan_name += ', N_{jets} #ge 2'
+
+        displayname = 'Z+jets CR (%s)'%(chan_name)
 
         REGIONS.append(Region(name, displayname))
         REGIONS[-1].tcut = ' && '.join([ops[2], zjets_FF_CR])
@@ -129,7 +146,8 @@ vars_to_plot = []
 if eta_lt_1p45 or eta_gt_1p45:
     vars_to_plot += ['l_pt[2]']
 else:
-    vars_to_plot = ['fabs(l_eta[2]):l_pt[2]']
+    #vars_to_plot = ['fabs(l_eta[2]):l_pt[2]']
+    vars_to_plot = ['n_jets:fabs(l_eta[2]):l_pt[2]']
 
 # Remove duplicate names
 vars_to_plot = list(set(vars_to_plot))
@@ -159,7 +177,10 @@ for var in vars_to_plot:
         else:
             assert False, ("ERROR :: requested plot not defined:", var)
 
-        if p.is2D:
+        if p.is3D:
+            varz, vary, varx = var.split(':')
+            p.update(region, varx, vary, varz)
+        elif p.is2D:
             varx = var.split(':')[1]
             vary = var.split(':')[0]
             p.update(region, varx, vary)
@@ -186,6 +207,8 @@ for var in vars_to_plot:
             p.setStackPads(p.name)
         elif p.ptype == Types.two_dim:
             p.set2DPads(p.name)
+        elif p.ptype == Types.three_dim:
+            pass #Not intended for plotting
         else:
             print "WARNING :: %s plots are not yet setup"%p.ptype.name
             continue

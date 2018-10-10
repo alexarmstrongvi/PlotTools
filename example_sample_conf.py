@@ -46,7 +46,7 @@ fakes.color = color_palette['gray'][0]
 
 ################################################################################
 # Signal
-signal_branching_ratio = 0.2
+signal_branching_ratio = 0.01
 signal_SF = 1
 signal_suffix = " (%.f%% BR)" % (signal_branching_ratio * 100)
 if signal_SF != 1:
@@ -70,7 +70,9 @@ signal_taue.color = color_palette['gray'][4]
 higgs = Background("higgs", "Higgs"); SAMPLES.append(higgs)
 higgs.color = color_palette['red'][0] 
 
-ggF_Htt = Background("ggF_Htt", "H#tau#tau (ggF)", "$H\\rightarrow\\tau\\tau (ggF)$)"); SAMPLES.append(ggF_Htt)
+Htautau = Background("Htautau", "H#tau#tau", "$H\\rightarrow\\tau\\tau$"); SAMPLES.append(Htautau)
+Htautau.color = color_palette['red'][0] 
+ggF_Htt = Background("ggF_Htt", "H#tau#tau (ggF)", "$H\\rightarrow\\tau\\tau (ggF)$"); SAMPLES.append(ggF_Htt)
 ggF_Htt.color = color_palette['red'][0] 
 VBF_Htt = Background("VBF_Htt", "H#tau#tau (VBF)"); SAMPLES.append(VBF_Htt)
 VBF_Htt.color = color_palette['red'][1] 
@@ -97,7 +99,7 @@ ttbarX.color = color_palette['orange'][3]
 # VV combined
 VV = Background("vv", "VV"); SAMPLES.append(VV)
 VV.color = color_palette['spring'][0]
-VV.scale_factor *= 1.05
+#VV.scale_factor *= 1.05
 
 # VVV combined
 VVV = Background("vvv", "VVV"); SAMPLES.append(VVV)

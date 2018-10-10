@@ -42,7 +42,7 @@ r.THStack.__init__._creates = False
 import PlotTools.plot_utils as pu
 from PlotTools.YieldTable import UncFloat
 from global_variables import event_list_dir, plots_dir, yield_tbl_dir
-from PlotTools.hist import make_stack_axis
+from PlotTools.hist import make_plot1D_axis
 
 @contextmanager
 def open_root(f_name, f_mode):
@@ -286,7 +286,13 @@ def add_ff_hist_primitives(plot, hists, reg):
         for cut in cuts:
             hist_key = KEYS.generate_hist_key(sample, reg, cut)
             # histogram name must be unique relative to all hists made by script
-            var = plot.yvariable + ":" + plot.xvariable if plot.is2D else plot.variable
+            if plot.is3D:
+                var = plot.zvariable + ":" + plot.yvariable + ":" + plot.xvariable 
+            elif plot.is2D:
+                var = plot.yvariable + ":" + plot.xvariable
+            else:
+                var = plot.variable
+
             var = sub(r'[:\-(){}[\]]+','', var)
             h_name = "h_"+reg.name+'_'+hist_key+"_"+ var
             hist = build_hist(h_name, plot, sample, cut)
@@ -308,7 +314,9 @@ def add_ff_hist_primitives(plot, hists, reg):
             yld_tbls[num_or_den_sel].region = yld_region
             yld_tbls[num_or_den_sel].variable = var
             stat_err = r.Double(0.0)
-            if plot.is2D:
+            if plot.is3D:
+                integral = hist.IntegralAndError(0,-1,0,-1,0,-1,stat_err)
+            elif plot.is2D:
                 integral = hist.IntegralAndError(0,-1,0,-1,stat_err)
             else:
                 integral = hist.IntegralAndError(0,-1,stat_err)
@@ -325,7 +333,6 @@ def add_ff_hist_primitives(plot, hists, reg):
     yld_tbls['base_sel'].partitions.append(yld_tbls['num_sel'])
     YIELD_TABLES.append(yld_tbls['base_sel'])
      
-            
 def format_and_combine_hists(hists):
     '''
     Make all the combined histograms.
@@ -351,7 +358,12 @@ def format_and_combine_hists(hists):
                     print "Stack histograms (Channel: %s [%s]): %s initialized"%(
                             channel_name, num_or_den, stack_key)
                     stack_name = stack_key+'_'+num_or_den
-                    sample_dict[stack_key] = r.THStack(stack_name, "")
+                    if hist.plot.is3D:
+                        #HACK for 3D plots
+                        sample_dict[stack_key] = hist.Clone(stack_name)
+                        sample_dict[stack_key].Reset()
+                    else:
+                        sample_dict[stack_key] = r.THStack(stack_name, "")
                     sample_dict[stack_key].plot = hist.plot
 
                 sample_dict[stack_key].Add(hist)
@@ -363,7 +375,11 @@ def format_and_combine_hists(hists):
                 if not KEYS.is_stack(hist_key): continue
                 mc_hist_key = KEYS.generate_mc_hist_key(hist_key)
                 hist_name = mc_hist_key+'_'+num_or_den
-                mc_total_hist = hist.GetStack().Last().Clone(hist_name)
+                if hist.plot.is3D:
+                    #HACK for 3D plots
+                    mc_total_hist = hist.Clone(hist_name)
+                else:
+                    mc_total_hist = hist.GetStack().Last().Clone(hist_name)
                 mc_total_hist.plot = hist.plot
                 if KEYS.is_bkg_mc(hist_key):
                     mc_total_hist.displayname = KEYS.bkg_mc_str.replace("_"," ")
@@ -371,7 +387,7 @@ def format_and_combine_hists(hists):
                     mc_total_hist.displayname = KEYS.fake_mc_str.replace("_"," ")
                 else:
                     mc_total_hist.displayname = 'Total MC'
-                if not hist.plot.is2D:
+                if not hist.plot.is2D and not hist.plot.is3D:
                     mc_total_hist.SetLineWidth(3)
                     mc_total_hist.SetLineStyle(1)
                     mc_total_hist.SetFillStyle(0)
@@ -413,7 +429,7 @@ def get_fake_factor_hists(hists):
             ff_hist.plot = copy(num_hist.plot)
 
             # Format the hists
-            if not ff_hist.plot.is2D:
+            if not ff_hist.plot.is2D and not ff_hist.plot.is3D:
                 ff_hist.plot.update(doLogY = False, doNorm = True) #doNorm only affects axis
 
             ff_hists[channel_name][fake_factor_key] = ff_hist
@@ -428,11 +444,14 @@ def save_and_write_hists(ff_hists_dict, hists):
                 ff_hists[KEYS.data_corr_fake_factor].Write()
         return
 
+    # Only try to paint 1D histograms
     for channel_name, ff_hists in ff_hists_dict.iteritems():
         if ff_hists[KEYS.data_corr_fake_factor].plot.is2D:
             return
+        elif ff_hists[KEYS.data_corr_fake_factor].plot.is3D:
+            return
 
-# Saving plots of fake factor hists
+    # Saving plots of fake factor hists
     for channel_name, ff_hists in ff_hists_dict.iteritems():
         data_corr_ff_hist = ff_hists[KEYS.data_corr_fake_factor]
         #data_ff_hist = ff_hists[KEYS.data_fake_factor]
@@ -521,10 +540,10 @@ def save_hist(title, plot, reg_name, hist_list):
     can = plot.pads.canvas
     can.cd()
     can.SetTitle(title)
-    if plot.doLogY : can.SetLogy(True)
+    if not (plot.is2D or plot.is3D) and plot.doLogY : can.SetLogy(True)
 
     # Make Axis
-    axis = make_stack_axis(plot)
+    axis = make_plot1D_axis(plot)
     if plot.auto_set_ylimits:
         reformat_axis(plot, axis, hist_list)
 
@@ -585,7 +604,12 @@ def save_hist(title, plot, reg_name, hist_list):
     can.Update()
 
     # Save
-    var = plot.yvariable + ":" + plot.xvariable if plot.is2D else plot.variable
+    if plot.is3D:
+        var = plot.zvariable + ":" + plot.yvariable + ":" + plot.xvariable 
+    elif plot.is2D:
+        var = plot.yvariable + ":" + plot.xvariable
+    else:
+        var = plot.variable
     suffix = "_" + plot.suffix if plot.suffix else ""
     outname = reg_name+ '_' + var+ '_' + title + suffix + ".pdf"
     outname = outname.replace(" ","_")
@@ -639,7 +663,20 @@ def reformat_axis(plot, axis, hist_list):
 # Fake factor functions
 def build_hist(h_name, plot, sample, cut):
     cut = r.TCut(cut)
-    if plot.is2D:
+    if plot.is3D:
+        hist = r.TH3D(h_name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax, plot.nzbins, plot.zmin, plot.zmax)
+        draw_cmd = "%s>>%s"%(plot.zvariable+":"+plot.yvariable+":"+plot.xvariable, hist.GetName())
+        sample.tree.Draw(draw_cmd, cut, "goff")
+        if plot.rebin_xbins:
+            new_bins = array('d', plot.rebin_xbins)
+            hist = pu.make_rebinned_th3(hist, xbins=new_bins)
+        if plot.rebin_ybins:
+            new_bins = array('d', plot.rebin_ybins)
+            hist = pu.make_rebinned_th3(hist, ybins=new_bins)
+        if plot.rebin_zbins:
+            new_bins = array('d', plot.rebin_zbins)
+            hist = pu.make_rebinned_th3(hist, zbins=new_bins)
+    elif plot.is2D:
         hist = r.TH2D(h_name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
         draw_cmd = "%s>>%s"%(plot.yvariable+":"+plot.xvariable, hist.GetName())
         sample.tree.Draw(draw_cmd, cut, "goff")

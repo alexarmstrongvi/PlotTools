@@ -62,6 +62,335 @@ class StackHist1D(HistBase):
     def __init__(self):
         pass
 
+class CutScan1D(HistBase):
+    def __init__(self, plot, reg, signals, backgrounds, xcut_is_max=True):
+        '''
+        Params:
+            - xcut_is_max (bool) - Indicates cuts are of the form cut_var < cut_value
+        '''
+        self.axis = None
+        self.hist_leg = None #ToDo
+        self.signal = None
+        self.bkgd = None
+        self.eff_leg = None #ToDo
+        self.signal_eff = None
+        self.bkgd_rej = None
+        self.s_over_b = None
+        self.roc_graph = None
+
+        self.axis = make_plot1D_axis(plot)
+        
+        self.signal = make_hist1D(plot, reg, signals)
+        self.bkgd = make_hist1D(plot, reg, backgrounds)
+        
+        self.hist_leg = make_basic_legend(plot)
+        if len(signals) > 3:
+            signal_name = "Signal"
+        else:
+            signal_name = "+".join([s.displayname for s in signals])
+        self.hist_leg.AddEntry(self.signal, signal_name,'l')
+        
+        if len(backgrounds) > 3:
+            bkgd_name = "MC Backgrounds"
+        else:
+            bkgd_name = "+".join([b.displayname for b in backgrounds])
+        self.hist_leg.AddEntry(self.bkgd, bkgd_name, 'l')
+
+        if plot.auto_set_ylimits:
+            reformat_axis(plot, self.axis, [self.signal, self.bkgd])
+        
+        self.signal_eff = self.make_eff_hist(self.signal, xcut_is_max)
+        self.bkgd_rej = self.make_eff_hist(self.bkgd, xcut_is_max, bkgd_rej=True)
+        self.eff_leg = make_basic_legend(plot)
+        self.eff_leg.AddEntry(self.signal_eff, "Signal Eff", 'l')
+        self.eff_leg.AddEntry(self.bkgd_rej, "Background Rej", 'l')
+        
+        self.s_over_b = self.make_s_over_b_hist(self.signal, self.bkgd, xcut_is_max)
+        self.roc_graph = self.make_roc_curve()
+    
+    def list_of_root_objects(self):
+        return [
+            self.axis,
+            self.hist_leg,
+            self.signal,
+            self.bkgd,
+            self.eff_leg,
+            self.signal_eff,
+            self.bkgd_rej,
+            self.s_over_b,
+            self.roc_graph,
+        ]
+
+    def make_eff_hist(self, hist, xcut_is_max=True, bkgd_rej=False):
+        eff_hist = GetCumulative1D(hist, xcut_is_max)
+        total_bin = hist.GetNbinsX() if xcut_is_max else 1
+        norm_factor = 1.0 / eff_hist.GetBinContent(total_bin)
+        eff_hist.Scale(norm_factor)
+        eff_hist.SetMaximum(1.4)
+        eff_hist.SetMinimum(0)
+        eff_hist.GetYaxis().SetTitle("%")
+        
+        format_y_axis(eff_hist)
+
+        if bkgd_rej:
+            for ibin in range(eff_hist.GetNbinsX()+1):
+                bin_val = eff_hist.GetBinContent(ibin)
+                eff_hist.SetBinContent(ibin, 1-bin_val)
+
+        return eff_hist
+
+    def make_s_over_b_hist(self, signal, bkgd, xcut_is_max=True):
+        signal_cm = GetCumulative1D(signal, xcut_is_max) 
+        bkgd_cm = GetCumulative1D(bkgd, xcut_is_max) 
+
+        s_over_b = signal_cm.Clone(signal.GetName() + "_s_over_b")
+        #s_over_b.Divide(bkgd_cm)
+        #s_over_b.GetYaxis().SetTitle("S/B")
+        bkgd_cm.Add(signal_cm)
+        s_over_b.Divide(bkgd_cm) # Purity
+        s_over_b.GetYaxis().SetTitle("Purity")
+        maxy = min(s_over_b.GetMaximum()*1.2,1)
+        s_over_b.SetMaximum(maxy)
+        s_over_b.SetMinimum(0)
+       
+        format_y_axis(s_over_b)
+        #format_x_axis(s_over_b)
+        xax = s_over_b.GetXaxis()
+        xax.SetTitleSize(0.07)
+        xax.SetLabelSize(0.08 * 0.81)
+        xax.SetLabelOffset(1.15*0.02)
+        #xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
+        xax.SetLabelFont(42)
+        xax.SetTitleFont(42)
+        
+        signal_cm.Delete()
+        bkgd_cm.Delete()
+
+        return s_over_b
+
+    def make_roc_curve(self):
+        roc_plot = r.TGraph()
+        skipped_bins = 0
+        for xbin in range(1, self.signal.GetNbinsX()+1):
+            for ybin in range(1, self.signal.GetNbinsY()+1):
+                x_val = self.signal_eff.GetBinContent(xbin,ybin) 
+                b_eff = 1 - self.bkgd_rej.GetBinContent(xbin,ybin) 
+                # Ignore large spike in background rejection that occurs
+                # after the cut has already removed 95% of signal
+                # Also ignore cases where bkgd efficiency is negative because of negative weights
+                if b_eff > 0 and x_val > 0.05:
+                    y_val = 1.0 / (b_eff)
+                    roc_plot.SetPoint(xbin-1-skipped_bins, x_val, y_val)
+                else:
+                    skipped_bins += 1
+        roc_plot.GetXaxis().SetTitle("Signal Efficiency") 
+        roc_plot.GetYaxis().SetTitle("Background Rejection") 
+        format_y_axis(roc_plot)
+        roc_plot.GetYaxis().SetLabelSize(0.06 * 0.81)
+        roc_plot.GetYaxis().SetTitleSize(0.06 * 0.81)
+        roc_plot.GetYaxis().SetTitleOffset(0.80 * 1.2)
+        format_x_axis(roc_plot)
+        roc_plot.GetXaxis().SetLabelSize(0.06 * 0.81)
+        roc_plot.GetXaxis().SetTitleSize(0.06 * 0.81)
+        
+        return roc_plot
+   
+class CutScan2D(HistBase):
+    def __init__(self, plot, reg, signals, backgrounds, 
+            xcut_is_max=True, ycut_is_max=True, and_cuts=True, bkgd_rej=False):
+        '''
+        Params:
+            - xcut_is_max (bool) - Indicates cuts are of the form cut_var < cut_value
+        '''
+        self.axis = None
+        self.signal = None
+        self.bkgd = None
+        self.signal_eff = None
+        self.bkgd_rej = None
+        self.s_over_b = None
+        self.roc_graph = None
+
+        self.axis = make_plot2D_axis(plot)
+        
+        self.signal = make_hist2D(plot, reg, signals)
+        self.bkgd = make_hist2D(plot, reg, backgrounds)
+        
+        self.signal_eff = self.make_eff_hist(self.signal, xcut_is_max, ycut_is_max, and_cuts)
+        self.bkgd_rej = self.make_eff_hist(self.bkgd, xcut_is_max, ycut_is_max, and_cuts, bkgd_rej=True)
+        
+        self.s_over_b = self.make_s_over_b_hist(self.signal, self.bkgd, xcut_is_max, ycut_is_max, and_cuts)
+        self.roc_graph = self.make_roc_curve()
+        
+        if len(signals) > 3:
+            signal_name = "Signal"
+        else:
+            signal_name = "+".join([s.displayname for s in signals])
+        self.signal.SetTitle(signal_name)
+        
+        if len(backgrounds) > 3:
+            bkgd_name = "MC Backgrounds"
+        else:
+            bkgd_name = "+".join([b.displayname for b in backgrounds])
+        self.bkgd.SetTitle(bkgd_name)
+
+    def list_of_root_objects(self):
+        return [
+            self.axis,
+            self.signal,
+            self.bkgd,
+            self.signal_eff,
+            self.bkgd_rej,
+            self.s_over_b,
+            self.roc_graph,
+        ]
+
+    def make_eff_hist(self, hist, xcut_is_max=True, ycut_is_max=True, and_cuts=True, bkgd_rej=False):
+        '''
+        Params:
+            xcut_is_max - xvar cuts are treated as a min (i.e. cut_var < cut_val)
+        '''
+        eff_hist = GetCumulative2D(hist, xcut_is_max, ycut_is_max, and_cuts)
+        total_binx = hist.GetNbinsX()+1 if xcut_is_max else 0
+        total_biny = hist.GetNbinsY()+1 if ycut_is_max else 0
+        norm_factor = 1.0 / eff_hist.GetBinContent(total_binx, total_biny)
+        eff_hist.Scale(norm_factor)
+        eff_hist.SetMaximum(1.0)
+        eff_hist.SetMinimum(0)
+        eff_hist.GetXaxis().SetTitle(hist.GetXaxis().GetTitle())
+        eff_hist.GetYaxis().SetTitle(hist.GetYaxis().GetTitle())
+        eff_hist.GetZaxis().SetTitle("%")
+
+        
+        format_y_axis(eff_hist)
+
+        if bkgd_rej:
+            for xbin in range(eff_hist.GetNbinsX()+2):
+                for ybin in range(eff_hist.GetNbinsY()+2):
+                    bin_val = eff_hist.GetBinContent(xbin, ybin)
+                    eff_hist.SetBinContent(xbin, ybin, 1-bin_val)
+
+        return eff_hist
+
+    def make_s_over_b_hist(self, signal, bkgd, xcut_is_max, ycut_is_max, and_cuts):
+        signal_cm = GetCumulative2D(signal, xcut_is_max, ycut_is_max, and_cuts) 
+        bkgd_cm = GetCumulative2D(bkgd, xcut_is_max, ycut_is_max, and_cuts) 
+
+        s_over_b = signal_cm.Clone(signal.GetName() + "_s_over_b")
+        #s_over_b.Divide(bkgd_cm)
+        #s_over_b.GetYaxis().SetTitle("S/B")
+        bkgd_cm.Add(signal_cm)
+        s_over_b.Divide(bkgd_cm) # Purity
+        s_over_b.GetZaxis().SetTitle("Purity")
+        maxy = min(s_over_b.GetMaximum(),1)
+        s_over_b.SetMaximum(maxy)
+        s_over_b.SetMinimum(0)
+       
+        format_y_axis(s_over_b)
+        format_x_axis(s_over_b)
+        
+        signal_cm.Delete()
+        bkgd_cm.Delete()
+
+        return s_over_b
+
+    def make_roc_curve(self):
+        roc_plot = r.TGraph()
+        bin_counter = 0
+        for xbin in range(1, self.signal.GetNbinsX()+1):
+            for ybin in range(1, self.signal.GetNbinsY()+1):
+                x_val = self.signal_eff.GetBinContent(xbin, ybin) 
+                b_eff = 1 - self.bkgd_rej.GetBinContent(xbin, ybin) 
+                # Ignore large spike in background rejection that occurs
+                # after the cut has already removed 95% of signal
+                # Also ignore cases where bkgd efficiency is negative because of negative weights
+                if b_eff > 0 and x_val > 0.05: #Ignore large spike in background rejection
+                    y_val = 1.0 / (b_eff)
+                    roc_plot.SetPoint(bin_counter, x_val, y_val)
+                    bin_counter += 1
+        roc_plot.GetXaxis().SetTitle("Signal Efficiency") 
+        roc_plot.GetYaxis().SetTitle("Background Rejection") 
+        format_y_axis(roc_plot)
+        roc_plot.GetYaxis().SetLabelSize(0.06 * 0.81)
+        roc_plot.GetYaxis().SetTitleSize(0.06 * 0.81)
+        roc_plot.GetYaxis().SetTitleOffset(0.80 * 1.2)
+        format_x_axis(roc_plot)
+        roc_plot.GetXaxis().SetLabelSize(0.06 * 0.81)
+        roc_plot.GetXaxis().SetTitleSize(0.06 * 0.81)
+        
+        return roc_plot
+
+def GetCumulative1D(hist, cut_is_max):
+    '''
+    Get cumulative histogram. Differs from TH1::GetCumulative by including overflow
+    Params:
+        cut_is_max (bool) - cuts on x-axis are treated as minimum cuts (x_var < x_cut_val)
+    '''
+    cumulative_hist = hist.Clone(hist.GetName() + "_cumulative")
+    cumulative_hist.Reset()
+
+    of_xbin = hist.GetNbinsX()+1 # overflow x-bin
+    for xbin in range(of_xbin+1):
+        x1, x2 = (0, xbin) if cut_is_max else (xbin, of_xbin)
+        val = hist.Integral(x1,x2)
+        cumulative_hist.SetBinContent(xbin, val)
+
+    return cumulative_hist
+
+def GetCumulative2D(hist, xcut_is_max, ycut_is_max, and_cuts):
+    '''
+    Params:
+        xcut_is_max (bool) - cuts on x-axis are treated as minimum cuts (x_var < x_cut_val)
+        ycut_is_max (bool) - cuts on y-axis are treated as minimum cuts (y_var < y_cut_val)
+        and_cuts (bool) - x and y cuts are AND'ed vs OR'ed
+    '''
+    cumulative_hist = hist.Clone(hist.GetName() + "_cumulative")
+    cumulative_hist.Reset()
+
+    of_xbin = hist.GetNbinsX()+1 # overflow x-bin
+    of_ybin = hist.GetNbinsY()+1 # overfloy y-bin
+    total = hist.Integral(0, -1, 0, -1)
+    for xbin in range(of_xbin+1):
+        for ybin in range(of_ybin+1):
+            x1, x2 = (0, xbin) if xcut_is_max else (xbin, of_xbin)
+            y1, y2 = (0, ybin) if ycut_is_max else (ybin, of_ybin)
+            val = hist.Integral(x1,x2,y1,y2)
+
+            if not and_cuts:
+                # Cuts are OR'ed so add regions that only fail one criterion
+                x1_flip, x2_flip = (xbin+1, -1) if xcut_is_max else (0, xbin-1) 
+                y1_flip, y2_flip = (ybin+1, -1) if ycut_is_max else (0, ybin-1) 
+                val_x = hist.Integral(x1_flip,x2_flip,y1,y2)
+                val_y = hist.Integral(x1,x2,y1_flip,y2_flip)
+
+                # If those regions are outide of the hist overflow, then skip
+                if x2-x1 >= of_xbin: val_x = 0
+                if y2-y1 >= of_ybin: val_y = 0
+                
+                val += val_x + val_y
+
+            cumulative_hist.SetBinContent(xbin, ybin, val)
+
+    return cumulative_hist
+
+
+def format_y_axis(hist):
+    yax = hist.GetYaxis()
+    yax.SetTitleSize(0.10 * 0.83)
+    yax.SetLabelSize(0.08 * 0.81)
+    yax.SetLabelOffset(0.98 * 0.013 * 1.08)
+    yax.SetTitleOffset(0.45 * 1.2)
+    yax.SetLabelFont(42)
+    yax.SetTitleFont(42)
+
+def format_x_axis(hist):
+    xax = hist.GetXaxis()
+    xax.SetTitleSize(1.1 * 0.14)
+    xax.SetLabelSize(0.08 * 0.81)
+    xax.SetLabelOffset(1.15*0.02)
+    #xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
+    xax.SetLabelFont(42)
+    xax.SetTitleFont(42)
+
 class RatioHist1D(HistBase) :
     ratio_ymax = 2.0
 
@@ -85,7 +414,7 @@ class RegionCompare1D(HistBase):
         self.leg = None
         self.hists = []
 
-        self.axis = make_stack_axis(plot)
+        self.axis = make_plot1D_axis(plot)
         self.leg = make_basic_legend(plot)
         for ii, reg in enumerate(regions):
             comb_hist = None
@@ -109,7 +438,7 @@ class RegionCompare1D(HistBase):
                 normalize_hist(hist)
         
         if plot.auto_set_ylimits:
-            self.reformat_axis(plot)
+            reformat_axis(plot, self.axis, self.hists)
 
     def list_of_root_objects(self):
         return [
@@ -118,40 +447,37 @@ class RegionCompare1D(HistBase):
             self.hists
         ]
 
-    def reformat_axis(self, plot):
-        ''' Reformat axis to fit content and labels'''
-        # Get max y-value in hists
-        maxy = 0
-        miny = float("inf")
-        for hist in self.hists:
-            maxy_tmp = hist.GetMaximum()
-            miny_tmp = hist.GetMinimum()    
-            if maxy_tmp > maxy: maxy = maxy_tmp
-            if miny_tmp < miny: miny = miny_tmp
-        
-        if maxy <= 0:
-            print "WARNING :: Max value of plot is <= 0"
-        
-        # Set max and min
-        if plot.doLogY:
-            maxy = 10**(pu.get_order_of_mag(maxy))
-            if miny > 0:
-                miny = 10**(pu.get_order_of_mag(miny))
-            else:
-                miny = 10**(pu.get_order_of_mag(maxy) - 4)
+def reformat_axis(plot, axis, hists):
+    ''' Reformat axis to fit content and labels'''
+    # Get max y-value in hists
+    maxy = 0
+    miny = float("inf")
+    for hist in hists:
+        maxy_tmp = hist.GetMaximum()
+        miny_tmp = hist.GetMinimum()    
+        if maxy_tmp > maxy: maxy = maxy_tmp
+        if miny_tmp < miny: miny = miny_tmp
+    
+    if maxy <= 0:
+        print "WARNING :: Max value of plot is <= 0"
+    
+    # Set max and min
+    if plot.doLogY:
+        maxy = 10**(pu.get_order_of_mag(maxy))
+        if miny > 0:
+            miny = 10**(pu.get_order_of_mag(miny))
         else:
-            maxy = maxy
-            miny = 0
+            miny = 10**(pu.get_order_of_mag(maxy) - 4)
+    else:
+        maxy = maxy
+        miny = 0
 
-        # Get y-axis max multiplier to fit labels
-        max_mult = 1e5 if plot.doLogY else 1.8
+    # Get y-axis max multiplier to fit labels
+    max_mult = 1e5 if plot.doLogY else 1.8
 
-        # reformat the axis
-        self.axis.SetMaximum(max_mult*maxy)
-        self.axis.SetMinimum(miny)
-        #for hist in self.hists:
-        #    hist.SetMaximum(max_mult*maxy)
-        #    hist.SetMinimum(miny)
+    # reformat the axis
+    axis.SetMaximum(max_mult*maxy)
+    axis.SetMinimum(miny)
 
 def normalize_hist(hist):
     norm_factor = 1.0/hist.Integral() if hist.Integral() else 1
@@ -163,6 +489,44 @@ def normalize_hist(hist):
         pu.scale_thstack(hist, norm_factor)
     else:
         print "WARNING :: Unexpectd class type:", type(hist)
+
+def make_hist1D(plot, reg, samples, samples_name=""):
+    # Make simple hist
+    if not isinstance(samples, list):
+        samples = [samples]
+    if not samples_name:
+        samples_name = "_".join([x.name for x in samples])
+
+    var_name = pu.strip_for_root_name(plot.variable)
+    h_name = "h_"+reg.name+'_'+samples_name+"_"+ var_name
+    h = pu.th1d(h_name, "", int(plot.nbins),
+                plot.xmin, plot.xmax,
+                plot.xlabel, plot.ylabel)
+    h.SetLineColor(samples[0].color)
+    h.Sumw2
+        
+    draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
+    
+    for sample in samples:
+        # Draw final histogram (i.e. selections and weights applied)
+        if plot.variable != samples[0].weight_str:
+            weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
+        else:
+            weight_str = 1
+        sample.tree.Draw(draw_cmd, weight_str, "goff")
+
+    # Rebin
+    if plot.rebin_bins:
+        new_bins = array('d', plot.rebin_bins)
+        h = h.Rebin(len(new_bins)-1, h_name, new_bins)
+
+    # Add overflow
+    if plot.add_overflow:
+        pu.add_overflow_to_lastbin(h)
+    if plot.add_underflow:
+        pu.add_underflow_to_firstbin(h)
+
+    return h
 
 class DataMCRatioHist1D(RatioHist1D) :
     def __init__(self, plot, reg, stack_hist):
@@ -266,7 +630,7 @@ class DataMCRatioHist1D(RatioHist1D) :
         nominalAsymErrorsNoSys.Delete()
         g_data.Delete()
 
-def make_stack_axis(plot):
+def make_plot1D_axis(plot):
     hax = r.TH1F("axes", "", int(plot.nbins), plot.xmin, plot.xmax)
     hax.SetMinimum(plot.ymin)
     hax.SetMaximum(plot.ymax)
@@ -319,7 +683,7 @@ class DataMCStackHist1D(HistBase):
         self.histos_for_leg = []
 
         self.make_stack_legend(plot, reg)
-        self.axis = make_stack_axis(plot)
+        self.axis = make_plot1D_axis(plot)
         self.add_stack_backgrounds(plot, reg, YIELD_TBL, bkgds)
         if sigs: self.add_stack_signals(plot, reg, YIELD_TBL, sigs)
         self.add_stack_data(plot, reg, YIELD_TBL, data)
@@ -507,11 +871,11 @@ class DataMCStackHist1D(HistBase):
 
         cut = "(" + reg.tcut + ")"
         cut = r.TCut(cut)
-        blind_factor = 0 if data.blinded and reg.isSR else 1
+        blind_factor = '!(100 < MCollASym && MCollASym < 150)' if data.blinded and reg.isSR else '1'
         draw_cmd = "%s>>%s"%(plot.variable, self.data_hist.GetName())
         
 
-        data.tree.Draw(draw_cmd, "(%s) * %d" % (cut, blind_factor), "goff")
+        data.tree.Draw(draw_cmd, "(%s) * %s" % (cut, blind_factor), "goff")
         self.data_hist.GetXaxis().SetLabelOffset(-999)
 
         # print the yield +/- stat error
@@ -670,6 +1034,88 @@ class ComparisonHist1D :
     def __init__(self):
         pass
 
+def make_plot2D_axis(plot):
+    axis = r.TH2D("axes", "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
+    axis.SetMinimum(plot.zmin)
+    axis.SetMaximum(plot.zmax)
+
+    xax = axis.GetXaxis()
+    xax.SetTitle(plot.xlabel)
+    xax.SetTitleFont(42)
+    xax.SetLabelFont(42)
+    xax.SetLabelSize(0.035)
+    xax.SetTitleSize(0.048 * 0.85)
+    xax.SetLabelOffset(1.15 * 0.02)
+    xax.SetTitleOffset(1.5 * xax.GetTitleOffset())
+
+    #if plot.bin_labels:
+    #    plot.set_bin_labels(axis)
+
+    yax = axis.GetYaxis()
+    yax.SetTitle(plot.ylabel)
+    yax.SetTitleFont(42)
+    yax.SetLabelFont(42)
+    yax.SetTitleOffset(1.4)
+    yax.SetLabelOffset(0.013)
+    yax.SetLabelSize(1.2 * 0.035)
+    yax.SetTitleSize(0.055 * 0.85)
+
+    zax = axis.GetZaxis()
+    zax.SetTitle(plot.zlabel)
+    #zax.SetTitleFont(42)
+    #zax.SetLabelFont(42)
+    #zax.SetTitleOffset(1.4)
+    #zax.SetLabelOffset(0.013)
+    #zax.SetLabelSize(1.2 * 0.035)
+    #zax.SetTitleSize(0.055 * 0.85)
+
+    #if plot.bin_labels:
+    #    plot.set_ybin_labels(axis)
+
+    #if plot.rebin_xbins:
+    #    new_bins = array('d', plot.rebin_xbins)
+    #    axis = axis.RebinX(len(new_bins)-1, 'axes', new_bins)
+    #if plot.rebin_ybins:
+    #    new_bins = array('d', plot.rebin_ybins)
+    #    axis = axis.RebinY(len(new_bins)-1, 'axes', new_bins)
+
+    return axis
+
+def make_hist2D(plot, reg, samples):
+    #TODO: require region_name input instead of reg object
+    if not isinstance(samples, list):
+        samples = [samples]
+    hist = r.TH2D(plot.name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
+    x_var = pu.strip_for_root_name(plot.xvariable)
+    y_var = pu.strip_for_root_name(plot.yvariable)
+    for sample in samples:
+        h_name_tmp = "h_"+reg.name+'_'+sample.name+"_"+x_var+"_"+y_var
+        h_tmp = r.TH2D(h_name_tmp, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
+        # Draw final histogram (i.e. selections and weights applied)
+
+
+        if not sample.isMC:
+            weight_str = '1'
+        elif plot.xvariable != sample.weight_str and plot.yvariable != sample.weight_str:
+            weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
+        else:
+            weight_str = '1'
+        draw_cmd = "%s>>%s"%(plot.yvariable+":"+plot.xvariable, h_tmp.GetName())
+        sample.tree.Draw(draw_cmd, weight_str, "goff")
+
+        hist.Add(h_tmp)
+
+    zax = hist.GetZaxis()
+    zax.SetTitle(plot.zlabel)
+    zax.SetTitleFont(42)
+    zax.SetLabelFont(42)
+    zax.SetTitleOffset(1.5)
+    zax.SetLabelOffset(0.013)
+    zax.SetLabelSize(1.2 * 0.035)
+
+    return hist
+    
+
 class Hist2D(HistBase) :
     def __init__(self, plot, reg, YIELD_TBL, samples):
         #TODO: make simplest class take a single sample
@@ -679,56 +1125,12 @@ class Hist2D(HistBase) :
         self.axis = None
         self.hist = None
         if not samples: return
-        self.make_axis(plot)
+        self.axis = make_plot2D_axis(plot)
         self.make_hist(plot, reg, YIELD_TBL, samples)
 
     def list_of_root_objects(self):
         return [self.axis, self.hist]
 
-    def make_axis(self, plot):
-        self.axis = r.TH2D("axes", "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
-        self.axis.SetMinimum(plot.zmin)
-        self.axis.SetMaximum(plot.zmax)
-
-        xax = self.axis.GetXaxis()
-        xax.SetTitle(plot.xlabel)
-        xax.SetTitleFont(42)
-        xax.SetLabelFont(42)
-        xax.SetLabelSize(0.035)
-        xax.SetTitleSize(0.048 * 0.85)
-        xax.SetLabelOffset(1.15 * 0.02)
-        xax.SetTitleOffset(1.5 * xax.GetTitleOffset())
-
-        #if plot.bin_labels:
-        #    plot.set_bin_labels(self.axis)
-
-        yax = self.axis.GetYaxis()
-        yax.SetTitle(plot.ylabel)
-        yax.SetTitleFont(42)
-        yax.SetLabelFont(42)
-        yax.SetTitleOffset(1.4)
-        yax.SetLabelOffset(0.013)
-        yax.SetLabelSize(1.2 * 0.035)
-        yax.SetTitleSize(0.055 * 0.85)
-
-        zax = self.axis.GetZaxis()
-        zax.SetTitle(plot.zlabel)
-        #zax.SetTitleFont(42)
-        #zax.SetLabelFont(42)
-        #zax.SetTitleOffset(1.4)
-        #zax.SetLabelOffset(0.013)
-        #zax.SetLabelSize(1.2 * 0.035)
-        #zax.SetTitleSize(0.055 * 0.85)
-
-        #if plot.bin_labels:
-        #    plot.set_ybin_labels(self.axis)
-
-        #if plot.rebin_xbins:
-        #    new_bins = array('d', plot.rebin_xbins)
-        #    self.axis = self.axis.RebinX(len(new_bins)-1, 'axes', new_bins)
-        #if plot.rebin_ybins:
-        #    new_bins = array('d', plot.rebin_ybins)
-        #    self.axis = self.axis.RebinY(len(new_bins)-1, 'axes', new_bins)
 
     def make_hist(self, plot, reg, YIELD_TBL, samples):
         self.hist = r.TH2D(plot.name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
