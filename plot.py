@@ -276,7 +276,9 @@ class Plot1D(PlotBase) :
 
         # set y-axis label
         width_label = str(round(self.bin_width(), 2))
-        if not self.xunits and width_label == '1.0':
+        if has_varying_bin_widths(self.bin_edges):
+            pass
+        elif not self.xunits and width_label == '1.0':
             pass
         elif self.xunits and width_label == '1.0':
             ylabel = "%s / %s"%(ylabel, self.xunits)
@@ -641,14 +643,18 @@ class Plot2D(PlotBase) :
         # set z-axis label
         xwidth_label = str(round(self.xbin_width(), 2))
         ywidth_label = str(round(self.ybin_width(), 2))
-        if not self.xunits and xwidth_label == '1.0':
+        if has_varying_bin_widths(self.xbin_edges):
+            pass
+        elif not self.xunits and xwidth_label == '1.0':
             pass
         elif self.xunits and xwidth_label == '1.0':
             zlabel = "%s / %s"%(zlabel, self.xunits)
         else:
             zlabel = "%s / %s %s"%(zlabel, xwidth_label, self.xunits)
 
-        if not self.yunits and ywidth_label == '1.0':
+        if has_varying_bin_widths(self.ybin_edges):
+            pass
+        elif not self.yunits and ywidth_label == '1.0':
             pass
         elif self.yunits and ywidth_label == '1.0':
             zlabel = "%s / %s"%(zlabel, self.yunits)
@@ -874,6 +880,15 @@ class Plot3D(PlotBase) :
 
         return xlabel, ylabel, zlabel
 
+def has_varying_bin_widths(bin_edges):
+    if len(bin_edges) <= 1:
+        return False
+    ref_diff = bin_edges[1] - bin_edges[0]
+    bin_diff = [bin_edges[n] - bin_edges[n-1] for n in range(1,len(bin_edges))]
+    varying_bin_size = any(abs(diff - ref_diff) > 0.01 for diff in bin_diff)
+
+    return varying_bin_size
+
 def determine_name(region, *argv):
     ''' Determine default plot name from variables and region'''
     vars_stripped = [pu.strip_for_root_name(var) for var in argv]
@@ -937,7 +952,6 @@ def determine_bins(edges, width, nbins, lo, hi, var):
         # If a bin width is requested, calculate the required number of bins
         if width:
             nbins = determine_nbins(hi, lo, width, var)
-        
         edges = pu.determine_bin_edges(lo, hi, nbins)
     else:
         nbins = len(edges) - 1

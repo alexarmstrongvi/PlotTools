@@ -13,16 +13,16 @@ Plot1D.ymax = 4e3
 
 # Improved plot defining setup
 # These plots will be copied into new plots for each region being run
-for_root_file = True
+for_root_file = False
 pt_max = 1000.0 if for_root_file else 100.0
 pt_bins = [0,10,11,15,20,25,pt_max]
 eta_bins = [0, 1.45, 2.5, 3.0]
-njet_bins = [-0.5,0.5,1.5,2.5,10.5]
+njet_bins = [-0.5,0.5,1.5,10.5]
 
 plot_defaults = {
-    'l_pt[2]'            : Plot1D( bin_edges=pt_bins, ptype=Types.stack, doLogY=False, add_overflow = False, xunits='GeV', xlabel='Fake candidate lepton p_{T}'),
-    'l_eta[2]'           : Plot1D( bin_edges=eta_bins, ptype=Types.stack, doLogY= False, add_underflow = True, xlabel='Fake candidate lepton #eta'),
-    'fabs(l_eta[2]):l_pt[2]'   : Plot2D( xbin_edges=pt_bins, ybin_edges=eta_bins, ylabel='Fake probe lepton |#eta|', xunits='GeV', xlabel='Leading lepton p_{T}'),
+    'l_pt[2]'            : Plot1D( bin_edges=pt_bins, ptype=Types.stack, doLogY=False, add_overflow = False, xunits='GeV', xlabel='lepton p_{T}'),
+    'l_eta[2]'           : Plot1D( bin_edges=eta_bins, ptype=Types.stack, doLogY= False, add_underflow = True, xlabel='lepton #eta'),
+    'fabs(l_eta[2]):l_pt[2]'   : Plot2D( xbin_edges=pt_bins, ybin_edges=eta_bins, ylabel='lepton |#eta|', xunits='GeV', xlabel='lepton p_{T}'),
     'n_jets:fabs(l_eta[2]):l_pt[2]' : Plot3D ( xbin_edges=pt_bins, ybin_edges=eta_bins, zbin_edges=njet_bins)
 }
 

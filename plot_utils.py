@@ -37,7 +37,7 @@ def strip_for_root_name(string):
     return string
 
 def determine_bin_edges(lo, hi, nbins):
-    assert lo < hi, ("ERROR (plot_utils.determine_bin_edges) :: lo > hi")
+    assert lo < hi, ("ERROR (plot_utils.determine_bin_edges) :: lo > hi", lo, hi)
     step = (hi-lo)/float(nbins)
     return [lo + x*step for x in range(0, nbins+1)]
 
@@ -629,7 +629,10 @@ def print_hist(hist, tablefmt='psql'):
         for z_bin, z_range in zip(hist_dict_bins, hist_dict_range):
             headers = [""]
             table = []
-            tex_string += "(%s) %s\n" % (z_bin, z_range)
+            if tablefmt == 'latex':
+                tex_string += "(%s) %s\\\\\n" % (z_bin, z_range)
+            else:
+                tex_string += "(%s) %s\n" % (z_bin, z_range)
             # Fill headers and row lables
             if not table:
                 for y_bin, y_range in zip(hist_dict_bins[z_bin], hist_dict_range[z_range]):
@@ -758,8 +761,8 @@ def draw_text(x=0.7, y=0.65, font=42, color=ROOT.kBlack, text="", size=0.04, ang
 
 def draw_atlas_label(status, analysis, region, move_x = 0, move_y = 0, scale = 1):
     left_edge = 0.18 + move_x
-    status_indent = (0.13 + move_x) * scale
-    bottom_edge = (0.68 + move_y)
+    status_indent = (0.13) * scale
+    bottom_edge = (0.73 + move_y)
     vspacing = 0.05 * scale
     size = 0.04 * scale
 

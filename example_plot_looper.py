@@ -151,6 +151,8 @@ def make_plotsStack(plot, reg):
     signals = [s for s in SAMPLES if s.isMC and s.isSignal]
     with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=backgrounds, sigs=signals) as main_hist:
         plot.make_data_mc_stack_plot(reg.displayname, main_hist)
+        print "HACK: Truth Composition for region", reg.displayname
+        print pu.print_hist(main_hist.mc_total)
     #for sample in backgrounds: 
     #    with Hist.DataMCStackHist1D(plot, reg, YIELD_TBL, data=data, bkgds=[sample], sigs=signals) as main_hist:
     #        plot.make_data_mc_stack_plot(reg.displayname, main_hist, suffix=sample.name)

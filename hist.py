@@ -499,9 +499,8 @@ def make_hist1D(plot, reg, samples, samples_name=""):
 
     var_name = pu.strip_for_root_name(plot.variable)
     h_name = "h_"+reg.name+'_'+samples_name+"_"+ var_name
-    h = pu.th1d(h_name, "", int(plot.nbins),
-                plot.xmin, plot.xmax,
-                plot.xlabel, plot.ylabel)
+    h_label = ";%s;%s" % (plot.xlabel, plot.ylabel)
+    h = r.TH1D(h_name,h_label, plot.nbins, plot.bin_edges)
     h.SetLineColor(samples[0].color)
     h.Sumw2
         
@@ -636,25 +635,12 @@ def make_plot1D_axis(plot):
     hax.SetMaximum(plot.ymax)
     xax = hax.GetXaxis()
     xax.SetTitle(plot.xlabel)
-    xax.SetTitleFont(42)
-    xax.SetLabelFont(42)
-    xax.SetLabelSize(0.035)
-    xax.SetTitleSize(0.048 * 0.85)
     if plot.ptype == Types.ratio:
-        hax.GetXaxis().SetTitleOffset(-999)
-        hax.GetXaxis().SetLabelOffset(-999)
-    else:
-        xax.SetLabelOffset(1.15 * 0.02)
-        xax.SetTitleOffset(1.5 * xax.GetTitleOffset())
+        xax.SetTitleOffset(-999)
+        xax.SetLabelOffset(-999)
 
     yax = hax.GetYaxis()
     yax.SetTitle(plot.ylabel)
-    yax.SetTitleFont(42)
-    yax.SetLabelFont(42)
-    yax.SetTitleOffset(1.4)
-    yax.SetLabelOffset(0.013)
-    yax.SetLabelSize(1.2 * 0.035)
-    yax.SetTitleSize(0.055 * 0.85)
 
     if plot.bin_labels and plot.ptype == Types.stack:
         plot.set_bin_labels(hax)

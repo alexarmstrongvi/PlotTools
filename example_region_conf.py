@@ -95,6 +95,7 @@ REGIONS[-1].tcut = lepton_trig_pT + "&&" + DF_OS
 
 ################################################################################
 # Preselection regions
+
 REGIONS.append(Region("preselection", "Preselection"))
 preselection_sel = singlelep_trig_pT
 preselection_sel += ' && fabs(lep_d0sigBSCorr[0]) < 15 && fabs(lep_d0sigBSCorr[1]) < 15'
@@ -143,19 +144,39 @@ VBF_stripped = "JetN_g30 >= 2 && j_pt[0] > 40 && Mjj > 400 && DEtaJJ > 3"
 REGIONS.append(Region("vbf", "VBF"))
 REGIONS[-1].tcut = "(%s) && (%s)"%(baseline_sel, VBF_stripped)
 
-REGIONS.append(Region("ggh_SR", "ggH SR"))
 ggH_sel = baseline_sel
 ggH_sel += ' && l_mT[0] > 50'
 ggH_sel += ' && DphiLep1MET < 1'
 ggH_sel += ' && taulep1_pT_ratio > 0.5'
 ggH_sel += ' && l_mT[1] < 40'
-REGIONS[-1].tcut = ggH_sel
-REGIONS[-1].isSR = True
-base = REGIONS[-1]
-REGIONS.append(base.build_channel('emu', 'e#mu', '$e\mu$', emu))
-base.compare_regions.append(REGIONS[-1])
-REGIONS.append(base.build_channel('mue', '#mue', '$\mu e$', mue))
-base.compare_regions.append(REGIONS[-1])
+
+promptlep0 = '(0 < l_truthClass[0] && l_truthClass[0] <= 2)' 
+promptlep1 = '(0 < l_truthClass[1] && l_truthClass[1] <= 2)'
+fakelep1 = '(l_truthClass[1] <= 0 || 2 < l_truthClass[1])'
+prompt_truth = " && ".join([promptlep0, promptlep1])
+fake_truth = " && ".join([promptlep0, fakelep1])
+den_fake_sel = "(!isMC || %s)" % fake_truth
+den_prompt_sel = "(!isMC || %s)" % prompt_truth
+num_fake_sel = "(nLepID == 1 || !isMC || %s)" % fake_truth
+num_prompt_sel = "(nLepID == 1 || !isMC || %s)" % prompt_truth
+
+for num_den, id_aid, fake_sel, prompt_sel in zip(["num","den"],['ID','anti-ID'],[num_fake_sel, den_fake_sel],[num_prompt_sel, den_prompt_sel]):
+    REGIONS.append(Region('ggh_SR_'+num_den, 'gg#rightarrowH SR','$gg\\rightarrow H SR$'))
+    base_reg = REGIONS[-1]
+    base_reg.tcut = ggH_sel
+    base_reg.isSR = True
+
+    REGIONS.append(base_reg.build_channel('emu', 'ID e + %s m'%id_aid, 'ID $e$ + %s $\mu$'%id_aid, emu))
+    base_reg_emu = REGIONS[-1]
+    base_reg.compare_regions.append(base_reg_emu)
+    REGIONS.append(base_reg_emu.build_channel('fake', 'Fake', 'Fake', fake_sel))
+    REGIONS.append(base_reg_emu.build_channel('real', 'Real', 'Real', prompt_sel))
+
+    REGIONS.append(base_reg.build_channel('mue', 'ID m + %s e'%id_aid, 'ID $\mu$ + %s $e$'%id_aid, mue))
+    base_reg_mue = REGIONS[-1]
+    base_reg.compare_regions.append(base_reg_mue)
+    REGIONS.append(base_reg_mue.build_channel('fake', 'Fake', 'Fake', fake_sel))
+    REGIONS.append(base_reg_mue.build_channel('real', 'Real', 'Real', prompt_sel))
 
 ################################################################################
 # Control Regions

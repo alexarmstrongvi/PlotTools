@@ -22,6 +22,7 @@ from collections import defaultdict
 from importlib import import_module
 import subprocess
 from contextlib import contextmanager
+from math import sqrt
 
 
 # Root data analysis framework
@@ -422,6 +423,8 @@ def get_fake_factor_hists(hists):
             num_hist = ch_dict[conf.NUM_STR][hist_key]
             ff_hist = num_hist.Clone(fake_factor_name)
             ff_hist.Divide(ch_dict[conf.DEN_STR][hist_key])
+            ff_hist.SetMaximum(1)
+
 
             # Append some information   
             ff_hist.displayname = hist_key.replace("_"," ")
@@ -440,8 +443,53 @@ def save_and_write_hists(ff_hists_dict, hists):
     if args.ofile_name:
         with open_root(args.ofile_name,"RECREATE") as ofile:
             for channel_name, ff_hists in ff_hists_dict.iteritems():
-                ff_hists[KEYS.data_corr_fake_factor].Write()
-        return
+                ff_hist = ff_hists[KEYS.data_corr_fake_factor]
+                if args.systematics:
+                    ''' 
+                    Get uncertainty from each systematic and then add them in qaudrature with the statistical uncertainty
+                    '''
+                    # Get nbins in fake factor
+                    nbins = ff_hist.GetNbinsX()+2
+                    if ff_hist.plot.is2D:
+                        nbins *= ff_hist.GetNbinsY()+2
+                    if ff_hist.plot.is3D:
+                        nbins *= ff_hist.GetNbinsY()+2
+                        nbins *= ff_hist.GetNbinsZ()+2
+                    
+                    # Non closure systematics
+                    ff_nonclosure_unc = ff_hist.Clone(ff_hist.GetName() + "_nonclosure_Syst")
+                    ff_nonclosure_unc.Reset()
+                    for ibin in range(0, nbins):
+                        ff_nonclosure_unc.SetBinContent(ibin, conf.NONCLOSURE_SYS)
+
+                    # Composition systematics
+                    ff_composition_unc = ff_hist.Clone(ff_hist.GetName() + "_composition_Syst") 
+                    ff_composition_unc.Reset()
+                    # TODO ff_composition_unc = ff_hists[KEYS.ff_composition_key]
+
+                    # Combine systematics
+                    ff_sys_unc = ff_hist.Clone(ff_hist.GetName() + "_Syst") 
+                    ff_sys_unc.Reset()
+                    for ibin in range(0, nbins):
+                        value = ff_hist.GetBinContent(ibin)
+                        stat_err = ff_hist.GetBinError(ibin)
+                        comp_err = 0 #abs(value - ff_composition_unc.GetBinContent(ibin))
+                        nonclo_err  = value * ff_nonclosure_unc.GetBinContent(ibin)
+                        ff_syst_err = sqrt(stat_err**2 + comp_err**2 + nonclo_err**2)
+                        ff_sys_unc.SetBinContent(ibin, ff_syst_err)
+
+                        if ff_syst_err > 0.001:
+                            print "Bin %d) = add_in_quad(%.4f, %.4f, %.4f) = %.4f" % (ibin, stat_err, comp_err, nonclo_err, ff_syst_err)
+                        print "Bin %d) Before error = %.4f" % (ibin, ff_hist.GetBinError(ibin)),
+                        ff_hist.SetBinError(ibin, ff_syst_err)
+                        print ", After error = %.4f" % ff_hist.GetBinError(ibin)
+
+                    ff_hist.Write()
+                    ff_sys_unc.Write()
+                    
+                    ff_nonclosure_unc.Delete()
+                    ff_composition_unc.Delete()
+                    ff_sys_unc.Delete()
 
     # Only try to paint 1D histograms
     for channel_name, ff_hists in ff_hists_dict.iteritems():
@@ -453,16 +501,24 @@ def save_and_write_hists(ff_hists_dict, hists):
     # Saving plots of fake factor hists
     for channel_name, ff_hists in ff_hists_dict.iteritems():
         data_corr_ff_hist = ff_hists[KEYS.data_corr_fake_factor]
+        data_corr_ff_hist.displayname = "Data (Corrected)"
+        
+        for ibin in range(0, data_corr_ff_hist.GetNbinsX()+2):
+            print ", Final error = %.4f" % data_corr_ff_hist.GetBinError(ibin)
+        
         #data_ff_hist = ff_hists[KEYS.data_fake_factor]
         mc_ff_hist = ff_hists[KEYS.mc_fake_factor]
         mc_ff_hist.color = r.kBlue+2
+        mc_ff_hist.displayname = "MC"
         #data_ff_hist.color = r.kBlack
         data_corr_ff_hist.color = r.kRed
         plot_title = 'Fake Factor (Ch: %s)'%channel_name
         #hists_to_plot = [mc_ff_hist, data_ff_hist, data_corr_ff_hist]
         hists_to_plot = [mc_ff_hist, data_corr_ff_hist]
         plot = data_corr_ff_hist.plot
-        save_hist(plot_title, plot, channel_name, hists_to_plot)
+        plot.ylabel = "Fake Factor"
+        reg_name = "Z+jets (Mu)" if channel_name.endswith('m') else "Z+jets (El)"
+        save_hist(plot_title, plot, reg_name, hists_to_plot)
 
     # Save all other desired plots
     for channel_name, ch_dict in hists.iteritems():
@@ -551,7 +607,7 @@ def save_hist(title, plot, reg_name, hist_list):
 
     # Format primitives and fill legend
     legend = pu.default_legend(xl=0.55,yl=0.71,xh=0.93,yh=0.90)
-    legend.SetNColumns(2)
+    legend.SetNColumns(1)
    
     stack_flag = False
     for hist in hist_list:
@@ -577,10 +633,11 @@ def save_hist(title, plot, reg_name, hist_list):
             else:
                 hist.SetFillStyle(0)
                 hist.SetMarkerStyle(r.kFullCircle)
-                hist.SetMarkerSize(1.5)
+                hist.SetMarkerSize(0)
                 hist.SetMarkerColor(hist.color)
-                hist.SetLineColor(r.kBlack)
-                leg_type = 'p'
+                #hist.SetLineColor(r.kBlack)
+                hist.SetLineColor(hist.color)
+                leg_type = 'l'
             legend.AddEntry(hist, hist.displayname, leg_type)
 
     # Draw primitives to canvas
@@ -592,6 +649,7 @@ def save_hist(title, plot, reg_name, hist_list):
             hist.Draw("HIST SAME")
         else:
             hist.Draw("pE1 same")
+            hist.Draw("HIST SAME")
 
     legend.Draw()
     pu.draw_atlas_label('Internal','Higgs LFV', reg_name)
@@ -612,7 +670,7 @@ def save_hist(title, plot, reg_name, hist_list):
     suffix = "_" + plot.suffix if plot.suffix else ""
     outname = reg_name+ '_' + var+ '_' + title + suffix + ".pdf"
     outname = outname.replace(" ","_")
-    outname = sub(r'[:\-(){}[\]]+','', outname)
+    outname = sub(r'[:\-(){}[\]+]+','', outname)
     save_path = os.path.join(plots_dir, args.dir_name, outname)
     save_path = os.path.normpath(save_path)
     can.SaveAs(save_path)
@@ -843,6 +901,9 @@ if __name__ == '__main__':
         parser.add_argument('-d', '--dir_name',
                             default="./",
                             help="Output directory")
+        parser.add_argument('--systematics',
+                            action='store_true', default=False,
+                            help='Run with systematic variation')
         parser.add_argument('-v', '--verbose',
                             action='store_true', default=False,
                             help='verbose output')

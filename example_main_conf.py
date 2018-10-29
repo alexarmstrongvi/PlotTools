@@ -25,13 +25,13 @@ ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ################################################################################
 import global_variables as g
 # Toggles
-run_fakes = True
-add_truth_den = False
-add_truth_num = True
+run_fakes = False
+add_truth_den = True
+add_truth_num = False
 run_den = False
 run_num = True
-run_zjets = False
-run_base = True
+run_zjets = True
+run_base = False
 
 assert run_den != run_num
 assert run_zjets != run_base
@@ -97,11 +97,11 @@ wgamma.set_chain_from_dsid_list(g.groups['wgamma'], bkg_ntuple_dir)
 
 zgamma.set_chain_from_dsid_list(g.groups['zgamma'], bkg_ntuple_dir)
 
-#higgs.set_chain_from_dsid_list(g.groups['higgs'], bkg_ntuple_dir)
-HWW.set_chain_from_dsid_list(g.groups['HWW'], bkg_ntuple_dir)
+higgs.set_chain_from_dsid_list(g.groups['higgs'], bkg_ntuple_dir)
+#HWW.set_chain_from_dsid_list(g.groups['HWW'], bkg_ntuple_dir)
 #HV.set_chain_from_dsid_list(g.groups['HV'], bkg_ntuple_dir)
 #ttH.set_chain_from_dsid_list(g.groups['ttH'], bkg_ntuple_dir)
-Htautau.set_chain_from_dsid_list(g.groups['Htautau'], bkg_ntuple_dir)
+#Htautau.set_chain_from_dsid_list(g.groups['Htautau'], bkg_ntuple_dir)
 #ggF_Htt.set_chain_from_dsid_list(g.groups['ggF_Htt'], bkg_ntuple_dir)
 #VBF_Htt.set_chain_from_dsid_list(g.groups['VBF_Htt'], bkg_ntuple_dir)
 
@@ -132,7 +132,7 @@ zjets_FF_CR += ' && MET < 60'
 #zjets_FF_CR += ' && fabs(dR_Z_Fake - 3.1415) < 0.5'
 #zjets_FF_CR += ' && nBJets == 0'
 #zjets_FF_CR += ' && nLJets <= 2'
-zjets_FF_CR += ' && n_jets == 1'
+#zjets_FF_CR += ' && n_jets == 1'
 
 promptlep0 = '(0 < l_truthClass[0] && l_truthClass[0] <= 2)' 
 promptlep1 = '(0 < l_truthClass[1] && l_truthClass[1] <= 2)'
@@ -146,7 +146,7 @@ if run_fakes:
 elif add_truth_num:
     zjets_FF_CR += " && (!isMC || %s)" % prompt_truth
 if add_truth_den:
-    zjets_FF_CR += " && (!isMC || %s)" % prompt_truth
+    zjets_FF_CR += " && (!isMC || %s)" % fake_truth
 
 
 for num_den, id_aid in [("num","ID"),("den",'anti-ID')]:
@@ -229,20 +229,20 @@ prompt_truth = " && ".join([promptlep0, promptlep1])
 fake_truth = " && ".join([promptlep0, fakelep1])
 
 if run_fakes:
-    wjets_FF_VR += " && (nLepID == 2 || !isMC || %s)" % prompt_truth
+    wjets_FF_VR += " && (nLepID == 1 || !isMC || %s)" % prompt_truth
 if add_truth_num:
     wjets_FF_VR += " && (!isMC || %s)" % prompt_truth
 if add_truth_den:
-    wjets_FF_VR += " && (!isMC || %s)" % prompt_truth
+    wjets_FF_VR += " && (!isMC || %s)" % fake_truth
 
 for num_den, id_aid in zip(["num","den"],['ID','anti-ID']):
     REGIONS.append(Region('wjets_FF_VR_'+num_den, 'W+jets FF VR'))
     REGIONS[-1].tcut = wjets_FF_VR
     base_reg = REGIONS[-1]
-    REGIONS.append(base_reg.build_channel(num_den+'_emu', 'ID e + %s m'%id_aid, 'ID $e$ + %s $\mu$'%id_aid, wjets_emu_FF_VR+' && '+emu))
+    REGIONS.append(base_reg.build_channel('emu', 'ID e + %s m'%id_aid, 'ID $e$ + %s $\mu$'%id_aid, wjets_emu_FF_VR+' && '+emu))
     base_reg.compare_regions.append(REGIONS[-1])
     base_reg_emu = REGIONS[-1]
-    REGIONS.append(base_reg.build_channel(num_den+'_mue', 'ID m + %s e'%id_aid, 'ID $\mu$ + %s $e$'%id_aid, wjets_mue_FF_VR+' && '+mue))
+    REGIONS.append(base_reg.build_channel('mue', 'ID m + %s e'%id_aid, 'ID $\mu$ + %s $e$'%id_aid, wjets_mue_FF_VR+' && '+mue))
     base_reg.compare_regions.append(REGIONS[-1])
     base_reg_mue = REGIONS[-1]
     #if not (run_fakes or add_truth_den or add_truth_num):
@@ -250,18 +250,6 @@ for num_den, id_aid in zip(["num","den"],['ID','anti-ID']):
     #    base_reg_emu.compare_regions.append(base_reg_emu.build_channel('fake', 'Fake', cuts = fake_truth))
     #    base_reg_mue.compare_regions.append(base_reg_mue.build_channel('prompt', 'Prompt', cuts = prompt_truth))
     #    base_reg_mue.compare_regions.append(base_reg_mue.build_channel('fake', 'Fake', cuts = fake_truth))
-
-REGIONS.append(Region('wjets_FF_VRden_emu', 'wjets FF VR (anti-ID mu)'))
-REGIONS[-1].tcut = wjets_FF_VR + wjets_emu_FF_VR + ' && ' + emu
-
-REGIONS.append(Region('wjets_FF_VRden_mue', 'wjets FF VR (anti-ID el)'))
-REGIONS[-1].tcut = wjets_FF_VR + ' && ' + mue
-
-REGIONS.append(Region('wjets_FF_VRnum_emu', 'wjets FF VR (ID mu)'))
-REGIONS[-1].tcut = wjets_FF_VR + wjets_emu_FF_VR + ' && ' + emu
-
-REGIONS.append(Region('wjets_FF_VRnum_mue', 'wjets FF VR (ID el)'))
-REGIONS[-1].tcut = wjets_FF_VR + ' && ' + mue
 
 region_plots = {}
 #region_plots['zjets_FF_CRden_eem'] = {
@@ -272,6 +260,7 @@ region_plots = {}
 #######################################
 # What regions to plot
 region_ops = []
+truth_op = '_fake' if add_truth_den else '_real' if add_truth_num else "" #TMP HACK
 if run_den:
     if run_zjets:
         #region_ops += ['zjets_FF_CRden_eee'] # Test Region
@@ -280,24 +269,26 @@ if run_den:
         #region_ops += ['zjets_FF_CR_den_eem', 'zjets_FF_CR_den_mmm']
         #region_ops += ['zjets_FF_CR_den_eee', 'zjets_FF_CR_den_mme']
     if run_base:
-        region_ops += ['wjets_FF_VR_den']
-        #region_ops += ['wjets_FF_VR_den_emu', 'wjets_FF_VR_den_mue']
+        #region_ops += ['wjets_FF_VR_den']
+        region_ops += ['wjets_FF_VR_den_emu', 'wjets_FF_VR_den_mue']
+        #region_ops += ['ggh_SR_den'+truth_op]
+        region_ops += ['ggh_SR_den_emu'+truth_op, 'ggh_SR_den_mue'+truth_op]
 elif run_num:
     if run_zjets:
         #region_ops += ['wzCR']
         #region_ops += ['wzCR_e','wzCR_m']
-        region_ops += ['wzCR_eee', 'wzCR_emm','wzCR_mee', 'wzCR_mmm']
+        #region_ops += ['wzCR_eee', 'wzCR_emm','wzCR_mee', 'wzCR_mmm']
         #region_ops += ['zjets_FF_CR_num']
-        #region_ops += ['zjets_FF_CR_num_m', 'zjets_FF_CR_num_e']
+        region_ops += ['zjets_FF_CR_num_m', 'zjets_FF_CR_num_e']
         #region_ops += ['zjets_FF_CR_num_eem', 'zjets_FF_CR_num_mmm']
         #region_ops += ['zjets_FF_CR_num_eee', 'zjets_FF_CR_num_mme']
     if run_base:
         #region_ops += ['wjets_FF_VR_num']
-        #region_ops += ['wjets_FF_VR_num_emu', 'wjets_FF_VR_num_mue']
+        region_ops += ['wjets_FF_VR_num_emu', 'wjets_FF_VR_num_mue']
         #region_ops += ['preselection_emu', 'preselection_mue']
         #region_ops += ['baseline_emu', 'baseline_mue']
         #region_ops += ['baseline_emu']
-        region_ops += ['ggh_SR_emu', 'ggh_SR_mue']
+        region_ops += ['ggh_SR_num_emu'+truth_op, 'ggh_SR_num_mue'+truth_op] #TMP HACK
         #region_ops += ['preselection']
         #region_ops += ['baseline']
         #region_ops += ['ggh_SR']
@@ -314,8 +305,8 @@ elif run_num:
 region_tuples = []
 #region_tuples.append(('top_CR_emu','ggh_SR_emu'))
 #region_tuples.append(('top_CR_mue','ggh_SR_mue'))
-region_tuples.append(('ztt_CR_emu','ggh_SR_emu'))
-region_tuples.append(('ztt_CR_mue','ggh_SR_mue'))
+#region_tuples.append(('ztt_CR_emu','ggh_SR_emu'))
+#region_tuples.append(('ztt_CR_mue','ggh_SR_mue'))
 #region_tuples.append(('wjets_FF_VR_num_emu','ggh_SR_emu'))
 #region_tuples.append(('wjets_FF_VR_num_mue','ggh_SR_mue'))
 
@@ -326,7 +317,6 @@ for reg_tuple in region_tuples:
     for reg_name in reg_tuple:
         tup.append(next(x for x in REGIONS if x.name == reg_name))
     REGION_TUPLES.append(tuple(tup))
-
 
 REGIONS = [x for x in REGIONS if x.name in region_ops]
 ################################################################################
@@ -343,8 +333,7 @@ YLD_TABLE.add_row_formula(name="mc_total",displayname="MC Total", formula="MC")
 YLD_TABLE.add_row_formula(name="data_mc_ratio",displayname="Data/MC", formula="data/MC")
 YLD_TABLE.add_row_formula(name="signal_mc_ratio",displayname="Signal/MC", formula="SIGNAL/MC")
 if not (run_fakes or add_truth_den or add_truth_num):
-    #YLD_TABLE.add_column_formula(name="other",displayname="Other", formula="BASE_REG - prompt - fake")
-    pass
+    YLD_TABLE.add_column_formula(name="other",displayname="Other", formula="BASE_REG - prompt - fake")
 if run_zjets and not run_fakes:
     pass
 if run_base and not run_fakes:
@@ -394,6 +383,7 @@ for region_name in region_ops:
         #vars_to_plot += ['l_pt[0]:drll','l_pt[0]:DphiLep1MET','dpt_ll:drll','dpt_ll:DphiLep1MET']
         #vars_to_plot += ['DphiLep1MET:drll',"DphiLep0MET:drll",'DphiLep1MET:l_mT[1]','DphiLep0MET:l_mT[0]']
         #vars_to_plot += ['drll', 'DphiLep1MET',"DphiLep0MET",'l_mT[1]','l_mT[0]']
+        vars_to_plot += ['l_truthClass[1]']
 
         #vars_to_plot += ['DphiLep0MET:MET', 'DphiLep1MET:MET', 'DphiLep0MET:RelMET', 'DphiLep1MET:RelMET']
         #vars_to_plot += ['DphiLep0MET', 'DphiLep1MET', 'MET', 'RelMET']
@@ -406,9 +396,10 @@ for region_name in region_ops:
     
     if "zjets" in region_name:
         #vars_to_plot += ['dR_Z_Fake:(ptll - l_pt[2])', 'ptll:(ptll - l_pt[2])', 'dR_Z_Fake:(ptll - l_pt[2])/ptll', '(ptll - l_pt[2])/ptll', '(ptll - l_pt[2] - MET)/ptll', 'lep_met_pT[2]', 'DphiLep2MET']
+        #vars_to_plot += ['l_pt[0]']
         #vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
         #vars_to_plot += ['drl2l[0]','drl2l[1]','drll','DphiLep0MET','DphiLep1MET','DphiLep2MET']
-        #vars_to_plot += ['l_eta[2]', 'n_jets', 'DphiLepJet[2]']
+        vars_to_plot += ['l_truthClass[2]']
         region.yield_table.add_row_formula(name="zjets_mc_ratio",displayname="Zll/MC", formula="zll/MC")
         region.yield_table.add_row_formula(name="vv_mc_ratio",displayname="VV/MC", formula="vv/MC")
 
@@ -432,7 +423,7 @@ for region_name in region_ops:
         region.yield_table.add_row_formula(name="norm_factor",displayname="norm factor", formula="(data-(MC-ztt))/ztt")
     
     if any(x in region_name for x in ['baseline','preselection','ggh_SR','ztt_CR','top_CR']):
-        vars_to_plot = ['MCollASym']
+        vars_to_plot = ['l_truthClass[1]']
         #vars_to_plot += ['taulep1_pT_ratio', 'DphiLep1MET', 'l_mT[0]', 'l_mT[1]']
         #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'MLL', 'nBJets', 'el1pT_trackclus_ratio', 'MET']
         #vars_to_plot += ['RelMET', 'nLJets', 'drll', 'DphiLep0MET','DphiLep1MET', 'l_mT[0]', 'l_mT[1]', 'taulep1_pT_ratio']

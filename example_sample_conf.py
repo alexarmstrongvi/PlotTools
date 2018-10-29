@@ -61,7 +61,7 @@ signal_taum.scale_factor *= signal_branching_ratio * signal_SF
 signal_taum.color = color_palette['gray'][4] 
 signal_taue = Signal("higgs_lfv_taue", "H#rightarrow#taue" + signal_suffix, "$H\\rightarrow\\tau e$" + signal_suffix.replace("%","\%")); SAMPLES.append(signal_taue)
 signal_taue.scale_factor *= signal_branching_ratio * signal_SF
-signal_taue.color = color_palette['gray'][4] 
+signal_taue.color = color_palette['gray'][2] 
 ################################################################################
 # Backgrounds
 #######################################

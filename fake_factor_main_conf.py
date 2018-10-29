@@ -4,7 +4,6 @@ An example configuration file for plotter.py
 
 Author:
     Alex Armstrong <alarmstr@cern.ch>
-    ... with lots of ideas borrowed from Danny Antrim <dantrim@cern.ch>
 
 License:
     Copyright: (C) <May 20th, 2018>; University of California, Irvine
@@ -19,16 +18,20 @@ from copy import deepcopy
 import ROOT
 # Prevent root from printing anything to the screen
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
+import atlasrootstyle.AtlasStyle
+ROOT.SetAtlasStyle()
 
 ################################################################################
 # Useful globals
 ################################################################################
 
 eta_gt_1p45 = False
-eta_lt_1p45 = False
+eta_lt_1p45 = True
 njet_0 = False
 njet_1 = False
 njet_ge2 = False
+
+NONCLOSURE_SYS = 0.30
 
 # Strings for plotting
 
@@ -143,7 +146,7 @@ region_ops += ['zjets_FF_CRden_m', 'zjets_FF_CRnum_m']
 #######################################
 # What variables to plot
 vars_to_plot = []
-if eta_lt_1p45 or eta_gt_1p45:
+if eta_lt_1p45 or eta_gt_1p45 or njet_0 or njet_1 or njet_ge2:
     vars_to_plot += ['l_pt[2]']
 else:
     #vars_to_plot = ['fabs(l_eta[2]):l_pt[2]']
