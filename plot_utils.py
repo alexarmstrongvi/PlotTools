@@ -34,6 +34,7 @@ def strip_for_root_name(string):
     string = re.sub(r'[(){}[\]\ ]+','', string)
     string = re.sub(r'-','_minus_', string)
     string = re.sub(r'/','_divide_', string)
+    string = re.sub(r'\.','_', string)
     return string
 
 def determine_bin_edges(lo, hi, nbins):

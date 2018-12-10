@@ -19,7 +19,6 @@ from PlotTools.plot import Plot1D, Plot2D, Types
 from PlotTools.region import Region
 from PlotTools.YieldTable import UncFloat
 import PlotTools.plot_utils as pu
-from global_variables import event_list_dir
 
 #TODOs
 # Move style stuff to ATLAS style files or plot.py and import
@@ -58,6 +57,7 @@ class HistBase:
                 print "ERROR :: Unknown primitive type", type(ro)
 
 #TODO: Remover unused classes
+
 class StackHist1D(HistBase):
     def __init__(self):
         pass
@@ -372,7 +372,6 @@ def GetCumulative2D(hist, xcut_is_max, ycut_is_max, and_cuts):
 
     return cumulative_hist
 
-
 def format_y_axis(hist):
     yax = hist.GetYaxis()
     yax.SetTitleSize(0.10 * 0.83)
@@ -393,23 +392,45 @@ def format_x_axis(hist):
 
 class RatioHist1D(HistBase) :
     ratio_ymax = 2.0
+    ratio_ymin = 0.0
 
-    def __init__(self, plot, reg, num, den):
-        self.ratio_label = 'Num / Den'
-        #self.get_ratio_axis(plot)
-        #self.get_ratio_errors(plot)
-        #self.get_ratio_graph(plot)
+    def __init__(self, plot, num, den, ymax = 0, ymin = 0):
+        self.axis = None
+        self.ratio = None
 
+        ymax = ymax if ymax else self.ratio_ymax
+        ymin = ymin if ymin else self.ratio_ymin
+        
+        self.axis = make_ratio1D_axis(plot, ymin, ymax) 
+        self.ratio = make_ratio_graph(num, den)
 
     def list_of_root_objects(self):
         return [
             self.axis,
-            self.errors,
             self.ratio
         ]
 
+def make_ratio_graph(num, den):
+    ratio = num.Clone("ratio_graph")
+    ratio.Divide(den)
+    ratio_graph = pu.th1_to_tgraph(ratio)
+    return ratio_graph
+
+def make_ratio1D_axis(plot, ymin = 0, ymax = 0):
+    hax = r.TH1F("ratio_axis", "", plot.nbins, plot.bin_edges)
+    hax.SetMinimum(ymin)
+    hax.SetMaximum(ymax)
+
+    xax = hax.GetXaxis()
+    xax.SetTitle(plot.xlabel)
+
+    yax = hax.GetYaxis()
+    yax.SetTitle(plot.ylabel)
+
+    return hax
+
 class RegionCompare1D(HistBase):
-    def __init__(self, regions, samples, plot):
+    def __init__(self, regions, samples, plot, event_list_dir = "./"):
         self.axis = None
         self.leg = None
         self.hists = []
@@ -527,6 +548,7 @@ def make_hist1D(plot, reg, samples, samples_name=""):
 
     return h
 
+
 class DataMCRatioHist1D(RatioHist1D) :
     def __init__(self, plot, reg, stack_hist):
         #TODO: take samples as input as opposed to stack hist
@@ -597,7 +619,7 @@ class DataMCRatioHist1D(RatioHist1D) :
         # since we explicity draw the MC error band
         nominalAsymErrorsNoSys = r.TGraphAsymmErrors(mc_errors)
         for i in xrange(nominalAsymErrorsNoSys.GetN()) :
-            nominalAsymErrorsNoSys.SetPointError(i-1,0,0,0,0)
+            nominalAsymErrorsNoSys.SetPointError(i-1,0,0,0,0) # TODO change i-1 to i
         ratio_raw = pu.tgraphAsymmErrors_divide(g_data, nominalAsymErrorsNoSys)
         #ratio_raw = pu.tgraphAsymmErrors_divide(nominalAsymErrorsNoSys,g_data)
 
@@ -650,6 +672,31 @@ def make_plot1D_axis(plot):
         hax.Delete()
         hax = hax_rebinned
     return hax
+
+class SampleCompare1D(HistBase):
+    def __init__(self, plot, reg, samples):
+        self.axis = None
+        self.leg = None
+        self.hists = []
+
+        self.axis = make_plot1D_axis(plot)
+        self.leg = make_basic_legend(plot)
+        for sample in samples:
+            hist = make_basic_hist(plot, sample, reg)
+            self.leg.AddEntry(hist, sample.displayname, "l")
+            if plot.doNorm: 
+                normalize_hist(hist)
+            self.hists.append(hist)
+        
+        if plot.auto_set_ylimits:
+            reformat_axis(plot, self.axis, self.hists)
+
+    def list_of_root_objects(self):
+        return [
+                self.axis,
+                self.leg,
+                self.hists
+                ]
 
 class DataMCStackHist1D(HistBase):
     def __init__(self, plot, reg, YIELD_TBL, data, bkgds, sigs=None):
@@ -817,7 +864,7 @@ class DataMCStackHist1D(HistBase):
             if plot.variable != sig_sample.weight_str:
                 weight_str = "%s * %s"%(sig_sample.weight_str, str(sig_sample.scale_factor))
             else:
-                weight_str = 1
+                weight_str = "1"
                 
             draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
             sig_sample.tree.Draw(draw_cmd, weight_str, "goff")
@@ -1170,10 +1217,10 @@ def make_basic_hist(plot, sample, reg, apply_cuts=False):
     h.Sumw2
 
     # Draw final histogram (i.e. selections and weights applied)
-    if plot.variable != sample.weight_str:
+    if hasattr(plot,'weight_str') and plot.variable != sample.weight_str:
         weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
     else:
-        weight_str = 1
+        weight_str = "1"
 
     if apply_cuts:
         weight = "(%s) * %s"%(reg.tcut, weight_str)
@@ -1181,7 +1228,11 @@ def make_basic_hist(plot, sample, reg, apply_cuts=False):
     else:
         weight = weight_str
         draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
+    print draw_cmd
     sample.tree.Draw(draw_cmd, weight, "goff")
+    
+    if plot.doNorm: normalize_hist(h)
+            
     return h
 
 def make_basic_legend(plot):

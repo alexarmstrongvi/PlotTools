@@ -47,6 +47,23 @@ class Sample :
         full_name = flat_ntuple_dir+file_name
         self.set_chain_from_list([full_name])
 
+    def set_chain_from_dir(self, flat_ntuple_dir, search_str = "*"):
+        '''
+        Build chain from directory of ntuples 
+
+        Args:
+            flat_ntuple_dir (str): Name of dir containing all .root flat ntuples
+            search_str (str): A globbing pattern to use in grabbing files from flat_ntuple_dir
+        '''
+
+        # Get list of flat ntuples file names from sample directory
+        self.file_path = os.path.realpath(flat_ntuple_dir)
+        print "Getting ntuples from", self.file_path
+        flat_ntuples = glob.glob(flat_ntuple_dir + search_str)
+        assert len(flat_ntuples), "No root files found at %s"%flat_ntuple_dir
+
+        self.set_chain_from_list(flat_ntuples)
+
     def set_chain_from_dsid_list(self, dsid_list, flat_ntuple_dir, search_strs=[], exclude_strs=[]):
         '''
         Build chain of background ntuples

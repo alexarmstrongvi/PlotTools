@@ -49,6 +49,8 @@ class Types(Enum):
 class PlotBase(object):
     save_dir = './'
     output_format = 'pdf'
+    analysis_name = "<analysis name>"
+    atlas_status = "Internal"
     def __init__(self):
         self.suffix = ""
     def save_plot(self, can, suffix = ""):
@@ -369,7 +371,7 @@ class Plot1D(PlotBase) :
         if hists.data: hists.data.Draw("option same pz 0")
         hists.leg.Draw()
         hists.leg_sig.Draw()
-        pu.draw_atlas_label('Internal','Higgs LFV', reg_name)
+        pu.draw_atlas_label(self.atlas_status, self.analysis_name, reg_name)
 
     def make_data_mc_stack_with_ratio_plot(self, reg_name, stack_hists, ratio_hists):
         # Pads
@@ -380,7 +382,6 @@ class Plot1D(PlotBase) :
         rcan.upper_pad.cd()
         if self.doLogY : rcan.upper_pad.SetLogy(True)
         rcan.upper_pad.Update()
-
 
         # Draw the histograms
         self.draw_data_mc_stack_plot(reg_name, stack_hists)
@@ -412,6 +413,67 @@ class Plot1D(PlotBase) :
         # Clean up
         #self.pads.canvas.Clear() #TODO: check if this can be uncommented
 
+    def make_overlay_with_ratio_plot(self, name, ratio_label, overlay_hist, ratio_hist, suffix=''):
+        # Pads
+        rcan = self.pads
+
+        ############################################################################
+        # Top comparison plot
+        rcan.upper_pad.cd()
+        if self.doLogY : rcan.upper_pad.SetLogy(True)
+        rcan.upper_pad.Update()
+
+        # Draw the histograms
+        overlay_hist.axis.Draw('axis')
+        for hist in overlay_hist.hists:
+            hist.Draw("hist same")
+        overlay_hist.leg.Draw()
+        #pu.draw_atlas_label(self.atlas_status, self.analysis_name, name)
+
+        # Reset axis
+        rcan.upper_pad.RedrawAxis()
+        #rcan.upper_pad.Update()
+
+        ############################################################################
+        # Bottom ratio plot
+        rcan.lower_pad.cd()
+
+        yax = ratio_hist.axis.GetYaxis()
+        yax.SetTitle(ratio_label)
+        yax.SetTitleSize(0.14 * 0.83)
+        yax.SetLabelSize(0.13 * 0.81)
+        yax.SetLabelOffset(0.98 * 0.013 * 1.08)
+        yax.SetTitleOffset(0.45 * 1.2)
+        yax.SetLabelFont(42)
+        yax.SetTitleFont(42)
+        yax.SetNdivisions(5)
+
+        # xaxis
+        xax = ratio_hist.axis.GetXaxis()
+        xax.SetTitleSize(1.1 * 0.14)
+        xax.SetLabelSize(yax.GetLabelSize())
+        xax.SetLabelOffset(1.15*0.02)
+        xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
+        xax.SetLabelFont(42)
+        xax.SetTitleFont(42)
+
+        ratio_hist.axis.Draw("axis")
+        ratio_hist.ratio.Draw('same p') # Draw only the markers
+
+        pu.draw_line(self.xmin, 1.5, self.xmax, 1.5, style = 3, width = 1)
+        pu.draw_line(self.xmin, 1.0, self.xmax, 1.0, style = 2, width = 1, color = r.kBlack)
+        pu.draw_line(self.xmin, 0.5, self.xmax, 0.5, style = 3, width = 1)
+
+        rcan.lower_pad.RedrawAxis()
+        #rcan.lower_pad.Update()
+
+        ############################################################################
+        # Save the histogram
+        self.save_plot(rcan.canvas)
+
+        # Clean up
+        #self.pads.canvas.Clear() #TODO: check if this can be uncommented
+
     def make_region_compare_plot(self, sample_name, hists, suffix=""):
         # Get Canvas
         can = self.pads.canvas
@@ -423,7 +485,7 @@ class Plot1D(PlotBase) :
             hist.SetLineWidth(3)
             hist.Draw("HIST SAME")
         hists.leg.Draw()
-        pu.draw_atlas_label('Internal','Higgs LFV', sample_name)
+        pu.draw_atlas_label(self.atlas_status, self.analysis_name, sample_name)
 
         # Reset axis
         can.RedrawAxis()
