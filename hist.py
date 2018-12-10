@@ -1228,7 +1228,6 @@ def make_basic_hist(plot, sample, reg, apply_cuts=False):
     else:
         weight = weight_str
         draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
-    print draw_cmd
     sample.tree.Draw(draw_cmd, weight, "goff")
     
     if plot.doNorm: normalize_hist(h)

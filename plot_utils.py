@@ -87,7 +87,7 @@ def get_tgraph_max(tgraph):
     '''
     Getting maximum y-value of TGraph because doesn't make things easy
 
-    TGraphs cannot calculate their own maximum for reasons discuessed here:
+    TGraphs cannot calculate their own maximum for reasons discussed here:
         https://root-forum.cern.ch/t/tgraph-getmaximum-getminimum/8867
 
     '''
@@ -108,7 +108,50 @@ def get_tgraph_min(tgraph):
         miny = min(get_tgraph_y_values(tgraph))
     return miny
 
+def get_branch_max(tree, branch_name):
+    '''
+    Get maximum value in a branch because TTree doesn't make things easy
 
+    TTree:GetMaximum only works if the branch is a fundamental data type.
+    So no unsplit classes or vectors
+    '''
+    # Check if GetMaximum will work
+    # GetMaximum silently returns 0 if it doesn't work
+    max_val = tree.GetMaximum(branch_name)
+    if max_val != 0: return max_val
+
+    h_tmp = ROOT.TH1F("h_tmp","",100,0,-1)
+    draw_cmd = "%s >> %s" % (branch_name, h_tmp.GetName())
+    tree.Draw(draw_cmd)
+    h_tmp.BufferEmpty() # Force TH1 to set auto-determined axis range
+    max_bin = h_tmp.FindLastBinAbove(0)
+    max_val = h_tmp.GetBinLowEdge(max_bin+1)
+
+    h_tmp.Delete()
+
+    return max_val
+
+def get_branch_min(tree, branch_name):
+    '''
+    Get miminum value in a branch because TTree doesn't make things easy
+
+    TTree:GetMinimum only works if the branch is a fundamental data type.
+    So no unsplit classes or vectors
+    '''
+    # Check if GetMinimum will work
+    # GetMinimum silently returns 0 if it doesn't work
+    min_val = tree.GetMinimum(branch_name)
+    if min_val != 0: return min_val
+
+    h_tmp = ROOT.TH1F("h_tmp","",100,0,-1)
+    draw_cmd = "%s >> %s" % (branch_name, h_tmp.GetName())
+    tree.Draw(draw_cmd)
+    h_tmp.BufferEmpty() # Force TH1 to set auto-determined axis range
+    min_bin = h_tmp.FindFirstBinAbove(0)
+    min_val = h_tmp.GetBinLowEdge(min_bin)
+    h_tmp.Delete()
+
+    return min_val
 def draw_text_on_top(text="", size=0.04, pushright=1.0, pushup=1.0) :
     s = size
     t = text
