@@ -23,6 +23,7 @@ from array import array
 # Root data analysis framework
 import ROOT as r
 r.TCanvas.__init__._creates = False
+r.TPad.__init__._creates = False
 
 import PlotTools.plot_utils as pu
 #import AtlasStyle #TODO: Can't load it correctly
@@ -424,6 +425,8 @@ class Plot1D(PlotBase) :
         rcan.upper_pad.Update()
 
         # Draw the histograms
+        overlay_hist.axis.GetXaxis().SetLabelOffset(999)
+        overlay_hist.axis.GetXaxis().SetLabelSize(0)
         overlay_hist.axis.Draw('axis')
         for hist in overlay_hist.hists:
             hist.Draw("hist same")
@@ -431,8 +434,8 @@ class Plot1D(PlotBase) :
         #pu.draw_atlas_label(self.atlas_status, self.analysis_name, name)
 
         # Reset axis
+        rcan.upper_pad.Update()
         rcan.upper_pad.RedrawAxis()
-        #rcan.upper_pad.Update()
 
         ############################################################################
         # Bottom ratio plot

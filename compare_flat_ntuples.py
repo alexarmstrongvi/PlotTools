@@ -37,8 +37,13 @@ import sys, os, traceback, argparse
 import time
 import subprocess
 
-from ROOT import TH1F, TH1, TFile, gDirectory, gROOT, kBlue, kRed
-gROOT.SetBatch(True)
+from ROOT import TH1F, TH1, TFile
+from ROOT import kBlue, kRed, kWarning
+import ROOT  # needed for ROOT globals
+ROOT.gROOT.SetBatch(True)
+ROOT.gErrorIgnoreLevel = kWarning
+ROOT.TPad.__init__._creates = False
+
 from plot_utils import print_hist, get_branch_max, get_branch_min
 
 # User Argument defaults and help information
@@ -297,6 +302,7 @@ def compare_flat_ttrees(tree1, tree2, branch_names):
 
         # Determine if there is a match
         hist1, hist2 = make_ttree_compare_hists(tree1, tree2, br)
+        if not hist1 or not hist2: continue
     
         if hists_are_diff(hist1, hist2): 
             diff_br.add(br)
@@ -311,6 +317,8 @@ def make_ttree_compare_hists(tree1, tree2, branch_name):
     """
     Make comparable (i.e. same range and nbins) histograms of a branch 
     found in two trees. 
+    In cases where it is not possible to draw a histogram, None is 
+    returned for both hists
     args:
         tree1 (ROOT.TTree) - first Root tree
         tree2 (ROOT.TTree) - second Root tree
@@ -327,15 +335,22 @@ def make_ttree_compare_hists(tree1, tree2, branch_name):
     max1 = get_branch_max(tree1, branch_name)
     max2 = get_branch_max(tree2, branch_name)
     final_max = max(max1, max2)
-    
-    if gDirectory.FindObject("h1"):
-        gDirectory.Get("h1").Delete()
+
+    val_range = final_max - final_min
+    if val_range > 10e12:
+        print "WARNING :: Branch %s has very large range [%s, %s]" % (
+                branch_name, final_min, final_max)
+    if val_range == 0:
+        final_min -= 1
+        final_max += 1
+    if ROOT.gDirectory.FindObject("h1"):
+        ROOT.gDirectory.Get("h1").Delete()
     h1 = TH1F("h1","",nbins,final_min, final_max)
     draw_cmd = "%s >> %s" % (branch_name, h1.GetName())
     tree1.Draw(draw_cmd,"","goff")
 
-    if gDirectory.FindObject("h2"):
-        gDirectory.Get("h2").Delete()
+    if ROOT.gDirectory.FindObject("h2"):
+        ROOT.gDirectory.Get("h2").Delete()
     h2 = TH1F("h2","",nbins,final_min, final_max)
     draw_cmd = "%s >> %s" % (branch_name, h2.GetName())
     tree2.Draw(draw_cmd,"","goff")
@@ -380,7 +395,8 @@ def flat_ttree_compare_plots(file1_path, file2_path, tree_name, branch_names, ou
     file1_name = file1_path.split('/')[-1]
     file1_dir = file1_path.replace(file1_name,"") 
     sample_name = file1_name.replace(".root","")
-    sample1 = Sample(sample_name)
+    new_or_old = "New" if "new" in sample_name else "Old"
+    sample1 = Sample(sample_name, new_or_old)
     sample1.color = kBlue
     sample1.set_chain_from_root_file(file1_name, file1_dir)
     samples.append(sample1)
@@ -388,7 +404,8 @@ def flat_ttree_compare_plots(file1_path, file2_path, tree_name, branch_names, ou
     file2_name = file2_path.split('/')[-1]
     file2_dir = file2_path.replace(file2_name,"") 
     sample_name = file2_name.replace(".root","")
-    sample2 = Sample(sample_name)
+    new_or_old = "New" if "new" in sample_name else "Old"
+    sample2 = Sample(sample_name, new_or_old)
     sample2.color = kRed
     sample2.set_chain_from_root_file(file2_name, file2_dir)
     samples.append(sample2)
@@ -408,9 +425,14 @@ def flat_ttree_compare_plots(file1_path, file2_path, tree_name, branch_names, ou
 
     plots = []
     for br in branch_names:
-        max_val = min(get_branch_max(s.tree, br) for s in samples)
-        min_val = max(get_branch_min(s.tree, br) for s in samples)
+        flag = False
+        max_val = max(get_branch_max(s.tree, br) for s in samples)
+        min_val = min(get_branch_min(s.tree, br) for s in samples)
         val_range = max_val - min_val
+        if val_range == 0:
+            max_val += 1
+            min_val -= 1
+            val_range = max_val - min_val
         range_min = min_val - 0.05*val_range
         range_max = max_val + 0.05*val_range
         plot = Plot1D(region=region.name, 
@@ -420,6 +442,8 @@ def flat_ttree_compare_plots(file1_path, file2_path, tree_name, branch_names, ou
                       xlabel=br, 
                       ptype=Types.ratio,
                       suffix=suffix)
+        #if plot.variable == "METPhi":
+        #    import pdb; pdb.set_trace()
         plot.setRatioPads(plot.name)
         plots.append(plot)
     
@@ -429,6 +453,8 @@ def flat_ttree_compare_plots(file1_path, file2_path, tree_name, branch_names, ou
         with SampleCompare1D(plot, region, samples) as hists: 
             num = hists.hists[0]
             den = hists.hists[1]
+            if num.Integral() == 0 and den.Integral() == 0:
+                print "INFO :: Skipping %s, all histograms are empty" % plot.variable
             with RatioHist1D(plot, num, den, ymax = 2, ymin = 0) as ratio_hist:
                 ratio_label = "%s / %s" % (samples[0].displayname, samples[1].displayname)
                 plot.make_overlay_with_ratio_plot(region.displayname, ratio_label, hists, ratio_hist) 
