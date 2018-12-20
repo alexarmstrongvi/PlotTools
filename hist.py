@@ -392,7 +392,8 @@ def format_x_axis(hist):
     xax.SetTitleFont(42)
 
 class RatioHist1D(HistBase) :
-    ratio_ymax = 2.0
+    ratio_ymax = 1.3
+    ratio_ymin = 0.7
 
     def __init__(self, plot, reg, num, den):
         self.ratio_label = 'Num / Den'
@@ -554,7 +555,7 @@ class DataMCRatioHist1D(RatioHist1D) :
         self.axis = stack.GetStack().Last().Clone("h_sm")
         h_sm = self.axis #TODO: remove relabel
         yax = h_sm.GetYaxis()
-        yax.SetRangeUser(0, self.ratio_ymax)
+        yax.SetRangeUser(self.ratio_ymin, self.ratio_ymax)
         yax.SetTitle(self.ratio_label)
         yax.SetTitleSize(0.14 * 0.83)
         yax.SetLabelSize(0.13 * 0.81)
@@ -857,7 +858,7 @@ class DataMCStackHist1D(HistBase):
 
         cut = "(" + reg.tcut + ")"
         cut = r.TCut(cut)
-        blind_factor = '!(100 < MCollASym && MCollASym < 150)' if data.blinded and reg.isSR else '1'
+        blind_factor = '!(100 < MCollASym && MCollASym < 150)' if data.blinded and reg.isSR and plot.variable == 'MCollASym' else '1'
         draw_cmd = "%s>>%s"%(plot.variable, self.data_hist.GetName())
         
 

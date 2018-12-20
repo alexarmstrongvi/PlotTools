@@ -58,9 +58,9 @@ plot_defaults = {
     'lep_d0sigBSCorr[0]'   : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xlabel='Lep0 d_{0}/#sigma_{d_{0}} BSCorr'),
     'lep_d0sigBSCorr[1]'   : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xlabel='Lep1 d_{0}/#sigma_{d_{0}} BSCorr'),
     'lep_d0sigBSCorr[2]'   : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xlabel='Lep2 d_{0}/#sigma_{d_{0}} BSCorr'),
-    'lep_z0SinTheta[0]'    : Plot1D( bin_range=[-0.5, 0.5],     bin_width=0.01, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep0 z_{0}sin(#theta)'),
+    'lep_z0SinTheta[0]'    : Plot1D( bin_range=[-1, 1],     bin_width=0.05, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep0 z_{0}sin(#theta)'),
     'lep_z0SinTheta[1]'    : Plot1D( bin_range=[-1, 1],     bin_width=0.05, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep1 z_{0}sin(#theta)'),
-    'lep_z0SinTheta[2]'    : Plot1D( bin_range=[-15, 15],     bin_width=0.5, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep2 z_{0}sin(#theta)'),
+    'lep_z0SinTheta[2]'    : Plot1D( bin_range=[-1, 1],     bin_width=0.05, add_underflow=True, doNorm=True, doLogY=False, xunits='mm', xlabel='Lep2 z_{0}sin(#theta)'),
     'l_flav'               : Plot1D( bin_range=[-0.5, 4.5],   bin_width=1, xlabel='Lepton flavor (0: e, 1: m)'),
     'l_type'               : Plot1D( bin_range=[-1.5, 39.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Lepton type'),
     'l_origin'             : Plot1D( bin_range=[-1.5, 46.5],  bin_width=1, doNorm=True, doLogY=False, ptype=Types.stack, xlabel='Lepton origin'),
@@ -164,7 +164,7 @@ plot_defaults = {
     'Z2_dilep_flav'        : Plot1D( bin_range=[-1.5, 5.5],   nbins=7, xlabel='2nd Z dilepton flavor'),
     'l_pt[2]'              : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='p_{T}^{lep2}'),
     'lep_met_pT[2]'        : Plot1D( bin_range=[0.0, 150.0],  bin_width=5, xunits='GeV', xlabel='p_{T}(fake lepton + MET)'),
-    'l_eta[2]'             : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.01, xlabel='Fake candidate lepton #eta'),
+    'l_eta[2]'             : Plot1D( bin_range=[-3.0, 3.0],   bin_width=0.5, xlabel='Fake candidate lepton #eta'),
     'l_flav[2]'            : Plot1D( bin_range=[-1.5, 2.5],   bin_width=1, xlabel='Fake candidate flavor'),
     'Z_dilep_sign'         : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='Z Dilepton Sign : OS(-1) SS(1)'),
     'Z2_dilep_sign'        : Plot1D( bin_range=[-2.5, 2.5],   bin_width=1, xlabel='2nd Z Dilepton Sign : OS(-1) SS(1)'),
@@ -231,7 +231,7 @@ plot_defaults['l_ID'].bin_labels = ['', 'tight', 'medium', 'looseBlayer','loose'
 
 
 #plot_defaults['l_pt[2]'].rebin_bins = [0,10,11,15,20,25,35,150]
-plot_defaults['l_eta[2]'].rebin_bins = [-3.0, -2.5, -1.45, 0, 1.45, 2.5, 3.0]
+#plot_defaults['l_eta[2]'].rebin_bins = [-3.0, -2.5, -1.45, 0, 1.45, 2.5, 3.0]
 #plot_defaults['l_pt[1]'].rebin_bins = [0,10,11,12,13,14,15,17,20,25,35,100]
 #plot_defaults['l_pt[1]'].rebin_bins = [0,10,11,15,20,25,35,100]
 #plot_defaults['l_pt[1]'].rebin_bins = [0,10,15,20,25,30,35,100]

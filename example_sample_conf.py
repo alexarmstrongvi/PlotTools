@@ -148,3 +148,4 @@ zgamma.color = color_palette['yellow'][2]
 ## MC background
 sm_mc = Background("sm_mc","SM MC"); SAMPLES.append(sm_mc)
 sm_mc.color = color_palette['violet'][0]
+

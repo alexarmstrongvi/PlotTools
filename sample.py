@@ -103,14 +103,15 @@ class Sample :
         print "%10s : ADDED %d FILES"%(self.name, n_files+1)
         self.tree = chain
 
-    def set_event_list(self, cut, list_name, save_dir):
+    def set_event_list(self, cut, list_name, save_dir, reset=True):
         # Checks
         if not self.tree:
             print "WARNING :: no tree set for", self.name
             return
 
         # Reset event list
-        self.tree.SetEventList(0)
+        if reset:
+            self.tree.SetEventList(0)
 
         # Define useful variables
         cut = str(cut)
