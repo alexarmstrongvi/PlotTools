@@ -684,10 +684,19 @@ class SampleCompare1D(HistBase):
         for sample in samples:
             hist = make_basic_hist(plot, sample, reg)
             self.leg.AddEntry(hist, sample.displayname, "l")
+            
+            # Add overflow/underflow
+            if plot.add_overflow:
+                pu.add_overflow_to_lastbin(hist)
+            if plot.add_underflow:
+                pu.add_underflow_to_firstbin(hist)
+            
+            # Normalize
             if plot.doNorm: 
                 normalize_hist(hist)
-            self.hists.append(hist)
         
+            self.hists.append(hist)
+
         if plot.auto_set_ylimits:
             reformat_axis(plot, self.axis, self.hists)
 
@@ -1217,7 +1226,7 @@ def make_basic_hist(plot, sample, reg, apply_cuts=False):
     h.Sumw2
 
     # Draw final histogram (i.e. selections and weights applied)
-    if hasattr(plot,'weight_str') and plot.variable != sample.weight_str:
+    if hasattr(sample, 'weight_str') and plot.variable != sample.weight_str:
         weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
     else:
         weight_str = "1"

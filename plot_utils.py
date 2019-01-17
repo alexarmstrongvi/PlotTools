@@ -119,7 +119,7 @@ def get_branch_max(tree, branch_name, cut_out_flt_max=True):
     # Check if GetMaximum will work
     # GetMaximum silently returns 0 if it doesn't work
     max_val = tree.GetMaximum(branch_name)
-    if cut_out_flt_max and abs(max_val) == sys.float_info.max: max_val = 0
+    if cut_out_flt_max and abs(max_val) >= sys.float_info.max: max_val = 0
     if max_val != 0: return max_val
 
     h_tmp = ROOT.TH1F("h_tmp","",100,0,-1)
@@ -149,7 +149,7 @@ def get_branch_min(tree, branch_name, cut_out_flt_max=True):
     # Check if GetMinimum will work
     # GetMinimum silently returns 0 if it doesn't work
     min_val = tree.GetMinimum(branch_name)
-    if cut_out_flt_max and abs(min_val) == sys.float_info.max: min_val = 0
+    if cut_out_flt_max and abs(min_val) >= sys.float_info.max: min_val = 0
     if min_val != 0: return min_val
 
     h_tmp = ROOT.TH1F("h_tmp","",100,0,-1)

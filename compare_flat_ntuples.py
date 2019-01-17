@@ -31,6 +31,7 @@ Author:
 
 # TODO: Add ability to make multiple plots for vector branches.
 #       Keep making plots for each index until plots are empty
+# TODO: Move to LexTools along with plot_utils
 
 # Imports
 import sys, os, traceback, argparse
@@ -395,7 +396,8 @@ def flat_ttree_compare_plots(file1_path, file2_path, tree_name, branch_names, ou
     file1_name = file1_path.split('/')[-1]
     file1_dir = file1_path.replace(file1_name,"") 
     sample_name = file1_name.replace(".root","")
-    new_or_old = "New" if "new" in sample_name else "Old"
+    #new_or_old = "New" if "new" in sample_name else "Old"
+    new_or_old = "getOriginalTrackParticleFromGSF" if "new" in sample_name else "trackParticle"
     sample1 = Sample(sample_name, new_or_old)
     sample1.color = kBlue
     sample1.set_chain_from_root_file(file1_name, file1_dir)
@@ -404,7 +406,8 @@ def flat_ttree_compare_plots(file1_path, file2_path, tree_name, branch_names, ou
     file2_name = file2_path.split('/')[-1]
     file2_dir = file2_path.replace(file2_name,"") 
     sample_name = file2_name.replace(".root","")
-    new_or_old = "New" if "new" in sample_name else "Old"
+    #new_or_old = "New" if "new" in sample_name else "Old"
+    new_or_old = "getOriginalTrackParticleFromGSF" if "new" in sample_name else "trackParticle"
     sample2 = Sample(sample_name, new_or_old)
     sample2.color = kRed
     sample2.set_chain_from_root_file(file2_name, file2_dir)
@@ -419,7 +422,8 @@ def flat_ttree_compare_plots(file1_path, file2_path, tree_name, branch_names, ou
     from plot import PlotBase, Plot1D, Types
     PlotBase.output_format = 'pdf'
     PlotBase.save_dir = out_dir
-    Plot1D.doLogY = False
+    Plot1D.doLogY = True
+    Plot1D.doNorm = True
     Plot1D.auto_set_ylimits = True
     nbins = 25
 
@@ -445,6 +449,7 @@ def flat_ttree_compare_plots(file1_path, file2_path, tree_name, branch_names, ou
         #if plot.variable == "METPhi":
         #    import pdb; pdb.set_trace()
         plot.setRatioPads(plot.name)
+        plot.doNorm = True
         plots.append(plot)
     
     # Loop over each plot and save image

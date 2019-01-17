@@ -414,6 +414,29 @@ class Plot1D(PlotBase) :
         # Clean up
         #self.pads.canvas.Clear() #TODO: check if this can be uncommented
 
+    def make_overlay_plot(self, name, overlay_hist, suffix=''):
+        # Pads
+        can = self.pads.canvas
+
+        can.cd()
+        if self.doLogY : can.SetLogy(True)
+        can.Update()
+
+        # Draw the histograms
+        overlay_hist.axis.Draw('axis')
+        for hist in overlay_hist.hists:
+            hist.Draw("hist same")
+        overlay_hist.leg.Draw()
+        pu.draw_atlas_label(self.atlas_status, self.analysis_name, name)
+
+        # Reset axis
+        can.Update()
+        can.RedrawAxis()
+        
+        ########################################################################
+        # Save the histogram
+        self.save_plot(can)
+
     def make_overlay_with_ratio_plot(self, name, ratio_label, overlay_hist, ratio_hist, suffix=''):
         # Pads
         rcan = self.pads
