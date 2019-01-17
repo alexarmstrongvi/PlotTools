@@ -4,7 +4,6 @@ import time
 import importlib
 from YieldTable import YieldTbl, UncFloat
 from math import sqrt
-from global_variables import event_list_dir, plots_dir, yield_tbl_dir
 from copy import deepcopy
 
 # Root data analysis framework
@@ -42,7 +41,7 @@ def main():
             scale_factor = sample.scale_factor if sample.isMC else 1
             list_name = "list_" + reg.name + "_" + sample.name
             
-            sample.set_event_list(reg.tcut, list_name, event_list_dir)
+            sample.set_event_list(reg.tcut, list_name, EVENT_LIST_DIR)
             yld, error = get_yield_and_error(sample.tree, weight_var, scale_factor)
             if sample.name == 'data': error = 0
             yld_table.add_entry(row_name = sample.name,
@@ -58,7 +57,7 @@ def main():
                                 ) 
             for cf_reg in reg.compare_regions:
                 list_name = "list_" + cf_reg.name + "_" + sample.name
-                sample.set_event_list(cf_reg.tcut, list_name, event_list_dir)
+                sample.set_event_list(cf_reg.tcut, list_name, EVENT_LIST_DIR)
                 yld, error = get_yield_and_error(sample.tree, weight_var, scale_factor)
 
                 # Remove region name in case compare region is a channel
@@ -84,7 +83,7 @@ def main():
         if yld_table.write_to_latex:
             name = reg.name
             if args.suffix: name += "_" + args.suffix
-            save_path = os.path.join(yield_tbl_dir, name + ".tex")
+            save_path = os.path.join(YIELD_TBL_DIR, name + ".tex")
             print "Saving yield table to", save_path
             yld_table.save_table(save_path, latex=True, mc_data_fmt=True)
 
@@ -181,6 +180,8 @@ if __name__ == '__main__':
 
         SAMPLES = conf.SAMPLES
         REGIONS = conf.REGIONS
+        EVENT_LIST_DIR = conf.EVENT_LIST_DIR
+        YIELD_TBL_DIR = conf.YIELD_TBL_DIR
         YLD_TABLE = conf.YLD_TABLE
 
         print_inputs(args)
