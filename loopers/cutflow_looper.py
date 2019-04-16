@@ -2,11 +2,10 @@
 import sys, os, traceback, argparse
 import time
 import importlib
+from YieldTable import YieldTbl, UncFloat
 from math import sqrt
-from hist import RegionCompare1D
-from plot import Plot1D
-import plot_utils as pu
-from global_variables import event_list_dir
+from global_variables import event_list_dir, plots_dir, yield_tbl_dir
+from copy import deepcopy
 
 # Root data analysis framework
 import ROOT as r
@@ -24,21 +23,66 @@ r.THStack.__init__._creates = False
 
 def main():
     global args
-    print "TESTING 2:", [x.name for y in REGION_TUPLES for x in y]
-    for regions in REGION_TUPLES:
-        suffix = "_".join([x.name for x in regions])
-        seen_variables = []
-        for plot in PLOTS:
-            # HACK: Strip plots of region properties used for other loopers
-            if plot.variable in seen_variables: continue
-            seen_variables.append(plot.variable)
-            for reg in regions:
-                plot.name = pu.strip_for_root_name(plot.variable) 
 
-            print '\n', 20*'-', "Making comparison plot for %s"%plot.variable, 20*'-', '\n'
-            with RegionCompare1D(regions, SAMPLES, plot, event_list_dir) as reg_cf_hists:
-                plot.make_region_compare_plot("Monte Carlo", reg_cf_hists, suffix)
+    for reg in REGIONS:
+        print '\n', 20*'-', "Yields for %s region"%reg.displayname, 20*'-', '\n'
 
+        yld_table = reg.yield_table if reg.yield_table else deepcopy(YLD_TABLE)
+        ########################################################################
+        for sample in SAMPLES :
+            if sample.isMC:
+                weight_var = sample.weight_str
+            elif not sample.isMC and sample.blinded and reg.isSR:
+                weight_var = "0"
+            else:
+                weight_var = ""
+            
+            scale_factor = sample.scale_factor if sample.isMC else 1
+            list_name = "list_" + reg.name + "_" + sample.name
+            sample.tree.SetEventList(0)
+            trig_cut = reg.cutflow[1].cut_str            
+            for ii, cut in enumerate(reg.cutflow):
+                print "Setting eventlist for Cut %2d of %2d: %50s" % (ii+1, len(reg.cutflow), cut.cut_str.replace(trig_cut,"Trigger"))
+                sample.set_event_list(cut.cut_str, list_name, event_list_dir, reset=True)
+                yld, error = get_yield_and_error(sample.tree, weight_var, scale_factor)
+                if sample.name == 'data': error = 0
+                #print "TESTING :: Yield = ", yld
+                yld_table.add_entry(row_name = cut.name,
+                                    col_name = sample.name,
+                                    val = yld,
+                                    error = error,
+                                    row_displayname = cut.displayname,
+                                    row_latexname = cut.latexname, 
+                                    col_displayname = sample.displayname,
+                                    col_latexname = sample.latexname,
+                                    ) 
+
+        #TODO
+        #yld_table.apply_column_formulas()
+        #yld_table.apply_row_formulas()
+
+        if yld_table.write_to_latex:
+            name = reg.name + "_cutflow"
+            if args.suffix: name += "_" + args.suffix
+            save_path = os.path.join(yield_tbl_dir, name + ".tex")
+            print "Saving cutflow yield table to", save_path
+            yld_table.save_table(save_path, latex=True)
+
+        yld_table.Print()
+
+def get_yield_and_error(ttree, weight_var="", scale=1, dummy_var="isMC"):
+    error = r.Double(0.0)
+    weight_str = "%s * %f" % (weight_var, scale) if weight_var else "1"
+    draw_cmd = "%s >> h_get_yields_tmp" % dummy_var
+    #print "TESTING :: weight_str = ", weight_str, "; draw_cmd =", draw_cmd
+    ttree.Draw(draw_cmd, weight_str)
+    h_tmp = r.gROOT.FindObject('h_get_yields_tmp')
+    yld = h_tmp.IntegralAndError(0,-1, error)
+    h_tmp.Delete()
+
+    return yld, error
+        
+        
 ################################################################################
 # SETUP FUNCTIONS
 def check_args(args):
@@ -117,8 +161,8 @@ if __name__ == '__main__':
         conf = importlib.import_module(import_conf)
 
         SAMPLES = conf.SAMPLES
-        REGION_TUPLES = conf.REGION_TUPLES
-        PLOTS = conf.PLOTS
+        REGIONS = conf.REGIONS
+        YLD_TABLE = conf.YLD_TABLE
 
         print_inputs(args)
 

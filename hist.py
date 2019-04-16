@@ -615,7 +615,7 @@ class DataMCRatioHist1D(RatioHist1D) :
         self.axis = stack.GetStack().Last().Clone("h_sm")
         h_sm = self.axis #TODO: remove relabel
         yax = h_sm.GetYaxis()
-        yax.SetRangeUser(0, self.ratio_ymax)
+        yax.SetRangeUser(self.ratio_ymin, self.ratio_ymax)
         yax.SetTitle(self.ratio_label)
         yax.SetTitleSize(0.11)
         yax.SetLabelSize(0.11)
@@ -630,7 +630,7 @@ class DataMCRatioHist1D(RatioHist1D) :
         xax.SetLabelOffset(0.025)
         xax.SetTitleOffset(1.3)
 
-        h_sm.SetTickLength(0.06)
+        #h_sm.SetTickLength(0.06)
 
         if plot.bin_labels:
             plot.set_bin_labels(h_sm)
@@ -669,8 +669,6 @@ class DataMCRatioHist1D(RatioHist1D) :
             index+=1
 
         # Format
-        #self.ratio.SetLineWidth(2)
-        #uglify
         self.ratio.SetLineWidth(1)
         self.ratio.SetMarkerStyle(20)
         self.ratio.SetMarkerSize(1.5)
@@ -689,12 +687,16 @@ def make_plot1D_axis(plot):
     hax.SetMaximum(plot.ymax)
     xax = hax.GetXaxis()
     xax.SetTitle(plot.xlabel)
+    xax.SetTitleSize(0.05)
+    xax.SetTitleOffset(1)
     if plot.ptype == Types.ratio:
         xax.SetTitleOffset(-999)
         xax.SetLabelOffset(-999)
 
     yax = hax.GetYaxis()
     yax.SetTitle(plot.ylabel)
+    yax.SetTitleOffset(1.7)
+    yax.SetTitleSize(0.035)
 
     if plot.bin_labels:
         plot.set_bin_labels(hax)
@@ -874,7 +876,6 @@ class DataMCStackHist1D(HistBase):
         if data.blinded and reg.isSR:
             data.scale_factor = 0
         self.data_hist = make_hist1D(plot, reg, data)
-        
         self.data_hist.GetXaxis().SetLabelOffset(-999)
 
         self.data = pu.convert_errors_to_poisson(self.data_hist)

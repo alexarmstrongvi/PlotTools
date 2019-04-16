@@ -26,16 +26,16 @@ ROOT.gROOT.SetBatch(ROOT.kTRUE)
 import global_variables as g
 # Toggles
 run_fakes = False
-add_truth_den = True
+add_truth_den = False
 add_truth_num = False
 run_den = False
-run_num = True
-run_zjets = True
+run_num = False
+run_zjets = False
 run_base = False
 
 assert run_den != run_num
 assert run_zjets != run_base
-assert not run_fakes or add_truth_num
+#assert not run_fakes or add_truth_num
 assert not (run_num and run_den)
 assert not (add_truth_num and add_truth_den)
 
@@ -57,11 +57,6 @@ if run_fakes:
     fake_ntuple_dir   = g.fake_ntuples
 
 
-
-# Luminosity options
-# Description | 2015-16 (ipb) |  2015-16 (ifb) | 2015 (ipb) | 2016 (ipb) | dummy
-# Value       |     36180     |      36.01     |    320     |    32971   |   1
-lumi = 36180
 
 from example_sample_conf import *
 #######################################
@@ -138,6 +133,12 @@ promptlep0 = '(0 < l_truthClass[0] && l_truthClass[0] <= 2)'
 promptlep1 = '(0 < l_truthClass[1] && l_truthClass[1] <= 2)'
 promptlep2 = '(0 < l_truthClass[2] && l_truthClass[2] <= 2)'
 fakelep2 = '(l_truthClass[2] <= 0 || 2 < l_truthClass[2])'
+#fakelep2 = 'l_truthClass[2] == 4' # FSRPho
+#fakelep2 = 'l_truthClass[2] == 5' # Had
+#fakelep2 = 'l_truthClass[2] == 7' # HF_T
+#fakelep2 = 'l_truthClass[2] == 8' # HF_B
+#fakelep2 = 'l_truthClass[2] == 9' # HF_C
+#fakelep2 = 'l_truthClass[2] == 10' # PhoConv
 prompt_truth = " && ".join([promptlep0, promptlep1, promptlep2])
 fake_truth = " && ".join([promptlep0, promptlep1, fakelep2])
 
@@ -206,8 +207,8 @@ for num_den, id_aid in [("num","ID"),("den",'anti-ID')]:
 # Fake Factor validation region: Wjet
 wjets_FF_VR = preselection_sel
 wjets_FF_VR += '&& !(l_pt[0] >= 45 && DphiLep1MET < 1.0 && 30 < MLL && MLL < 150)' # orthgonal to SR
-wjets_FF_VR += ' && nBJets==0 && l_pt[1] >= 10 && ( !'+mue+' || el1pT_trackclus_ratio < 1.2) && 50 < l_mT[0] && l_mT[1] < 40' # similar to SR
-#wjets_FF_VR += ' && 30 < MLL' #TODO: To be added
+wjets_FF_VR += ' && nBJets==0 && l_pt[1] >= 10 && ( !('+mue+') || el1pT_trackclus_ratio < 1.2) && 50 < l_mT[0] && l_mT[1] < 40' # similar to SR
+wjets_FF_VR += ' && 30 < MLL' #TODO: To be added
 wjets_FF_VR += ' && (drll <= 2.5 || dpt_ll > 25)' # Orthogonal to Ztautau
 wjets_FF_VR += ' && 25 < RelMET && MET < 60' #Remove additional top+VV+Ztt
 
@@ -272,7 +273,7 @@ if run_den:
         #region_ops += ['wjets_FF_VR_den']
         region_ops += ['wjets_FF_VR_den_emu', 'wjets_FF_VR_den_mue']
         #region_ops += ['ggh_SR_den'+truth_op]
-        region_ops += ['ggh_SR_den_emu'+truth_op, 'ggh_SR_den_mue'+truth_op]
+        #region_ops += ['ggh_SR_den_emu'+truth_op, 'ggh_SR_den_mue'+truth_op]
 elif run_num:
     if run_zjets:
         #region_ops += ['wzCR']
@@ -286,10 +287,11 @@ elif run_num:
         #region_ops += ['wjets_FF_VR_num']
         region_ops += ['wjets_FF_VR_num_emu', 'wjets_FF_VR_num_mue']
         #region_ops += ['preselection_emu', 'preselection_mue']
-        #region_ops += ['baseline_emu', 'baseline_mue']
-        #region_ops += ['baseline_emu']
-        region_ops += ['ggh_SR_num_emu'+truth_op, 'ggh_SR_num_mue'+truth_op] #TMP HACK
+        #region_ops += ['baseline_mue']
+        #region_ops += ['ggh_SR_num']
+        #region_ops += ['ggh_SR_num_emu'+truth_op, 'ggh_SR_num_mue'+truth_op] #TMP HACK
         #region_ops += ['preselection']
+        #region_ops += ['preselection_mue']
         #region_ops += ['baseline']
         #region_ops += ['ggh_SR']
         #region_ops += ['ztt_CR']
@@ -358,14 +360,11 @@ YIELD_TBL.formulas['Data/MC'] = "data/MC"
 from example_plot_conf import * #TODO: Dont use import *
 PlotBase.save_dir = g.plots_dir
 Plot1D.auto_set_ylimits = True
-Plot1D.doLogY = False
+Plot1D.doLogY = True
 Plot2D.doLogZ = False
 Plot2D.auto_set_zlimits = False
 
 vars_to_plot_all = []
-#vars_to_plot_all += ['ptll']
-#vars_to_plot_all += ['lep_d0sigBSCorr[0]','lep_z0SinTheta[0]','lep_d0sigBSCorr[1]','lep_z0SinTheta[1]']
-
 
 ################################################################################
 # Create plots
@@ -376,17 +375,9 @@ for region_name in region_ops:
     region = next(x for x in REGIONS if x.name == region_name)
     region.yield_table = deepcopy(YLD_TABLE)
     if "wjets" in region_name:
-        #vars_to_plot += ['el1pT_trackclus_ratio', 'taulep1_pT_ratio']
-        #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'MLL', 'nBJets', 'MET']
-        #vars_to_plot += ['RelMET', 'nLJets', 'drll', 'DphiLep0MET','DphiLep1MET', 'l_mT[0]', 'l_mT[1]']
-        #vars_to_plot += ['dpt_ll:drll','drll','dpt_ll']
-        #vars_to_plot += ['l_pt[0]:drll','l_pt[0]:DphiLep1MET','dpt_ll:drll','dpt_ll:DphiLep1MET']
-        #vars_to_plot += ['DphiLep1MET:drll',"DphiLep0MET:drll",'DphiLep1MET:l_mT[1]','DphiLep0MET:l_mT[0]']
-        #vars_to_plot += ['drll', 'DphiLep1MET',"DphiLep0MET",'l_mT[1]','l_mT[0]']
-        vars_to_plot += ['l_truthClass[1]']
-
-        #vars_to_plot += ['DphiLep0MET:MET', 'DphiLep1MET:MET', 'DphiLep0MET:RelMET', 'DphiLep1MET:RelMET']
-        #vars_to_plot += ['DphiLep0MET', 'DphiLep1MET', 'MET', 'RelMET']
+        #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_eta[0]', 'l_eta[1]', 'MLL', 'MET', 'n_jets','MCollASym']
+        #vars_to_plot += ['RelMET', 'nLJets', 'nBJets', 'drll', 'DphiLep0MET','DphiLep1MET', 'l_mT[0]', 'l_mT[1]']
+        vars_to_plot += ['l_pt[0]']
         
         region.yield_table.add_row_formula(name="top_mc_ratio", displayname="Top/MC", latexname="Top/MC", formula="top/MC")
         region.yield_table.add_row_formula(name="ztt_mc_ratio", displayname="Ztautau/MC", latexname="$Z\\rightarrow\\tau\\tau$/MC", formula="ztt/MC")
@@ -396,10 +387,10 @@ for region_name in region_ops:
     
     if "zjets" in region_name:
         #vars_to_plot += ['dR_Z_Fake:(ptll - l_pt[2])', 'ptll:(ptll - l_pt[2])', 'dR_Z_Fake:(ptll - l_pt[2])/ptll', '(ptll - l_pt[2])/ptll', '(ptll - l_pt[2] - MET)/ptll', 'lep_met_pT[2]', 'DphiLep2MET']
-        #vars_to_plot += ['l_pt[0]']
-        #vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
+        #vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'l_mT[2]', 'nBJets', 'nLJets']
         #vars_to_plot += ['drl2l[0]','drl2l[1]','drll','DphiLep0MET','DphiLep1MET','DphiLep2MET']
-        vars_to_plot += ['l_truthClass[2]']
+        #vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
+        vars_to_plot += ['l_pt[0]']
         region.yield_table.add_row_formula(name="zjets_mc_ratio",displayname="Zll/MC", formula="zll/MC")
         region.yield_table.add_row_formula(name="vv_mc_ratio",displayname="VV/MC", formula="vv/MC")
 
@@ -423,10 +414,17 @@ for region_name in region_ops:
         region.yield_table.add_row_formula(name="norm_factor",displayname="norm factor", formula="(data-(MC-ztt))/ztt")
     
     if any(x in region_name for x in ['baseline','preselection','ggh_SR','ztt_CR','top_CR']):
-        vars_to_plot = ['l_truthClass[1]']
+        vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_eta[0]', 'l_eta[1]', 'MET', 'n_jets','MCollASym']
+        vars_to_plot += ['RelMET', 'nLJets', 'drll', 'DphiLep0MET','DphiLep1MET', 'l_mT[0]', 'l_mT[1]']
+        #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_eta[0]', 'l_eta[1]', 'MET', 'n_jets','MCollASym']
         #vars_to_plot += ['taulep1_pT_ratio', 'DphiLep1MET', 'l_mT[0]', 'l_mT[1]']
         #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'MLL', 'nBJets', 'el1pT_trackclus_ratio', 'MET']
         #vars_to_plot += ['RelMET', 'nLJets', 'drll', 'DphiLep0MET','DphiLep1MET', 'l_mT[0]', 'l_mT[1]', 'taulep1_pT_ratio']
+        region.yield_table.add_row_formula(name="top_mc_ratio", displayname="Top/MC", latexname="Top/MC", formula="top/MC")
+        region.yield_table.add_row_formula(name="ztt_mc_ratio", displayname="Ztautau/MC", latexname="$Z\\rightarrow\\tau\\tau$/MC", formula="ztt/MC")
+        region.yield_table.add_row_formula(name="vv_mc_ratio",displayname="VV/MC", formula="vv/MC")
+        if not run_fakes:
+            region.yield_table.add_row_formula(name="wjets_mc_ratio",displayname="W+Jets/MC", formula="wjets/MC")
     #if any(x in region_name for x in ['zjets','wzCR']):
     #    vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_pt[2]', 'MLL', 'nLJets', 'MET']
     #    vars_to_plot += ['drll', 'DphiLep2MET', 'l_mT[2]', 'dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']

@@ -497,7 +497,25 @@ def add_to_band(g1, g2) : #, sys_name) :
 def get_bin_edges(axis):
     return [axis.GetBinLowEdge(x) for x in range(1, axis.GetNbins()+2)]
         
-         
+def shift_hist_by_unc(hist, up):
+    '''
+    Shift histogram nominal values by the bin uncertainty
+
+    params:
+        hist (TH1) - histogram to be modified
+        up (bool) - option to shift up or down
+
+    returns:
+        (TH1)
+    '''
+    for ibin in range(0,hist.GetNbinsX()+1):
+        unc = hist.GetBinError(ibin)
+        value = hist.GetBinContent(ibin)
+        new_value = value + unc if up else value - unc
+        hist.SetBinContent(ibin, new_value)
+    return hist
+
+
 # ----------------------------------------------
 #  TH2F Methods
 # ----------------------------------------------
@@ -822,7 +840,7 @@ def draw_text(x=0.7, y=0.65, font=42, color=ROOT.kBlack, text="", size=0.04, ang
 def draw_atlas_label(status, lumi, region, move_x = 0, move_y = 0, scale = 1):
     left_edge = 0.18 + move_x
     status_indent = (0.13) * scale
-    bottom_edge = (0.73 + move_y)
+    bottom_edge = (0.70 + move_y)
     vspacing = 0.05 * scale
     size = 0.04 * scale
 

@@ -98,8 +98,8 @@ REGIONS[-1].tcut = lepton_trig_pT + "&&" + DF_OS
 
 REGIONS.append(Region("preselection", "Preselection"))
 preselection_sel = singlelep_trig_pT
-preselection_sel += ' && fabs(lep_d0sigBSCorr[0]) < 15 && fabs(lep_d0sigBSCorr[1]) < 15'
-preselection_sel += ' && fabs(lep_z0SinTheta[0]) < 15 && fabs(lep_z0SinTheta[1]) < 15'
+preselection_sel += ' && (fabs(lep_d0sigBSCorr[0]) < 15 && fabs(lep_d0sigBSCorr[1]) < 15)'
+preselection_sel += ' && (fabs(lep_z0SinTheta[0]) < 15 && fabs(lep_z0SinTheta[1]) < 15)'
 
 REGIONS[-1].tcut = preselection_sel
 preselection = REGIONS[-1]
@@ -111,11 +111,12 @@ preselection.compare_regions.append(REGIONS[-1])
 # Baseline regions
 REGIONS.append(Region("baseline", "Baseline"))
 baseline_sel = preselection_sel
-baseline_sel += ' && nBJets == 0'
 baseline_sel += ' && l_pt[0] >= 45'
 baseline_sel += ' && l_pt[1] >= 15'
 baseline_sel += ' && (30 < MLL && MLL < 150)'
-baseline_sel += ' && ( !'+mue+' || el1pT_trackclus_ratio < 1.2)'
+baseline_sel += ' && nBJets == 0'
+baseline_sel += ' && ( !('+mue+') || el1pT_trackclus_ratio < 1.2)'
+# TODO: baseline_sel += ' && ' + if_cut(if=mue, then='el1pT_trackclus_ratio < 1.2')
 
 REGIONS[-1].tcut = baseline_sel
 baseline = REGIONS[-1]
@@ -145,10 +146,10 @@ REGIONS.append(Region("vbf", "VBF"))
 REGIONS[-1].tcut = "(%s) && (%s)"%(baseline_sel, VBF_stripped)
 
 ggH_sel = baseline_sel
-ggH_sel += ' && l_mT[0] > 50'
 ggH_sel += ' && DphiLep1MET < 1'
-ggH_sel += ' && taulep1_pT_ratio > 0.5'
+ggH_sel += ' && l_mT[0] > 50'
 ggH_sel += ' && l_mT[1] < 40'
+ggH_sel += ' && taulep1_pT_ratio > 0.5'
 
 promptlep0 = '(0 < l_truthClass[0] && l_truthClass[0] <= 2)' 
 promptlep1 = '(0 < l_truthClass[1] && l_truthClass[1] <= 2)'
@@ -254,3 +255,4 @@ REGIONS[-1].tcut = zll_cr_base + " && " + zll_cr_add + " && " + Z_ee
 
 REGIONS.append(Region("zCR_mumu", "Z CR (Channel: Mu-Mu)"))
 REGIONS[-1].tcut = zll_cr_base + " && " + zll_cr_add + " && " + Z_mumu
+
