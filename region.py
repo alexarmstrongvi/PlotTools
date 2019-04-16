@@ -18,7 +18,6 @@ class Region :
 
         self.yld_table = None # For linking to a YieldTbl object
 
-        # Deprecated        
         self.truth_fake_sel = None
         self.truth_bkg_sel = None
 

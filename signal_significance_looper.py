@@ -5,6 +5,7 @@ import importlib
 from YieldTable import YieldTbl, UncFloat
 from math import sqrt
 from copy import deepcopy
+from collections import defaultdict
 
 # Root data analysis framework
 import ROOT as r
@@ -22,14 +23,15 @@ r.THStack.__init__._creates = False
 
 def main():
     global args
-
+    yld_dict = defaultdict(dict)
     for reg in REGIONS:
         print '\n', 20*'-', "Yields for %s region"%reg.displayname, 20*'-', '\n'
 
-        yld_table = reg.yield_table if reg.yield_table else deepcopy(YLD_TABLE)
         ########################################################################
         print "Setting EventLists for %s"%reg.name,
-        print "(+%d comparison regions)"%len(reg.compare_regions) if len(reg.compare_regions) else ""
+        yld_dict[reg.name]['mc_bkgd_yld'] = UncFloat() 
+        yld_dict[reg.name]['data_yld'] = UncFloat() 
+        yld_dict[reg.name]['mc_sig_yld'] = defaultdict(UncFloat) 
         for sample in SAMPLES :
             if sample.isMC:
                 weight_var = sample.weight_str
@@ -40,62 +42,38 @@ def main():
 
             scale_factor = sample.scale_factor if sample.isMC else 1
             list_name = "list_" + reg.name + "_" + sample.name
-            
             sample.set_event_list(reg.tcut, list_name, EVENT_LIST_DIR)
             yld, error = get_yield_and_error(sample.tree, weight_var, scale_factor)
             if sample.name == 'data': error = 0
-            if len(reg.compare_regions):
-                col_name = display_name = latex_name = "Incl. Yld"
-            else:
-                col_name = reg.name
-                display_name = reg.displayname
-                latex_name = reg.latexname
-            col_name = "Incl. Yld" if len(reg.compare_regions) else reg.name
-            print "TESTING : Col name " , col_name
-            yld_table.add_entry(row_name = sample.name,
-                                col_name = col_name,
-                                val = yld,
-                                error = error,
-                                row_displayname = sample.displayname,
-                                row_latexname = sample.latexname, 
-                                col_displayname = display_name,
-                                col_latexname = latex_name,
-                                mc = sample.isMC,
-                                signal = sample.isSignal if sample.isMC else False
-                                ) 
-            for cf_reg in reg.compare_regions:
-                list_name = "list_" + cf_reg.name + "_" + sample.name
-                sample.set_event_list(cf_reg.tcut, list_name, EVENT_LIST_DIR)
-                yld, error = get_yield_and_error(sample.tree, weight_var, scale_factor)
+            
+            if sample.isMC and sample.isSignal:
+                mass_x = sample.mass_x
+                mass_y = sample.mass_y
+                yld_dict[reg.name]['mc_sig_yld'][(mass_x, mass_y)] += UncFloat(yld, error)
+            elif sample.isMC and not sample.isSignal:
+                yld_dict[reg.name]['mc_bkgd_yld'] += UncFloat(yld, error)
+            elif not sample.isMC:
+                yld_dict[reg.name]['data_yld'] += UncFloat(yld, error)
+           
+    ofile_str = 'region_name,mc_bkgd_yld,mc_bkgd_yld_unc,data_yld,mass_x,mass_y,sig_yld,sig_unc\n'
+    for reg_name, d in yld_dict.iteritems():
+        by = d['mc_bkgd_yld'].value
+        byu = d['mc_bkgd_yld'].uncertainty
+        dy = d['data_yld'].value
+        for (mass_x, mass_y), yld in d['mc_sig_yld'].iteritems():
+            sy = yld.value
+            syu = yld.uncertainty
+            row = [reg_name, by, byu, dy, mass_x, mass_y, sy, syu]
+            row = [str(x) for x in row]
+            ofile_str += "%s\n" % (",".join(row)) 
 
-                # Remove region name in case compare region is a channel
-                cf_displayname = cf_reg.displayname.replace(reg.displayname,"")
-                cf_latexname = cf_reg.latexname.replace(reg.latexname,"")
+    ofile_path = "%s/signal_sensativity.txt" % YIELD_TBL_DIR
+    with open(ofile_path, 'w') as ofile:
+        ofile.write(ofile_str)
+    print "INFO :: Output file written to", ofile_path
 
-                yld_table.add_entry(row_name=sample.name,
-                                    col_name=cf_reg.name,
-                                    val=yld,
-                                    error=error,
-                                    row_displayname = sample.displayname,
-                                    row_latexname = sample.latexname, 
-                                    col_displayname = cf_displayname,
-                                    col_latexname = cf_latexname,
-                                    mc = sample.isMC,
-                                    signal = sample.isSignal if sample.isMC else False
-                                    ) 
 
-        
-        yld_table.apply_column_formulas()
-        yld_table.apply_row_formulas()
 
-        if yld_table.write_to_latex:
-            name = reg.name
-            if args.suffix: name += "_" + args.suffix
-            save_path = os.path.join(YIELD_TBL_DIR, name + ".tex")
-            print "Saving yield table to", save_path
-            yld_table.save_table(save_path, latex=True, mc_data_fmt=True)
-
-        yld_table.Print(mc_data_fmt=True)
 
 def get_yield_and_error(ttree, weight_var="", scale=1, dummy_var="isMC"):
     error = r.Double(0.0)
@@ -165,7 +143,7 @@ if __name__ == '__main__':
                                 help='name of the config file')
         parser.add_argument("-s", "--suffix",
                                 default="",
-                                help='Suffix to append to output yield tables')
+                                help='Suffix to append to output files')
         parser.add_argument("-o", "--outdir",
                                 default="./",
                                 help='name of the output directory to save plots.')
@@ -190,7 +168,6 @@ if __name__ == '__main__':
         REGIONS = conf.REGIONS
         EVENT_LIST_DIR = conf.EVENT_LIST_DIR
         YIELD_TBL_DIR = conf.YIELD_TBL_DIR
-        YLD_TABLE = conf.YLD_TABLE
 
         print_inputs(args)
 

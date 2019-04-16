@@ -21,6 +21,7 @@ from tabulate import tabulate
 
 class UncFloat :
     precision = 2
+    #Assume all errors are uncorrelated
 
     def __init__(self, value = 0 , uncertainty = 0):
         if isinstance(value, Number):
@@ -59,20 +60,26 @@ class UncFloat :
             value = self.value * other 
             uncertainty = self.uncertainty * other
         else:
-            value = self.value * other.value
-            rel_unc1 = self.uncertainty /abs(self.value)
-            rel_unc2 = other.uncertainty / abs(other.value)
-            rel_unc = sqrt(rel_unc1**2 + rel_unc2**2)
-            uncertainty = rel_unc * abs(value)
+            # Add relative error in quadrature
+            # Solve for relative uncertainty to avoid problem from nominal = 0
+            # This would lead to undefined relative error (e.g. uncX/X = uncX/0 = undefined)
+            uncertainty = sqrt((self.value * other.uncertainty)**2 + (other.value * self.uncertainty)**2)
         return UncFloat(value, uncertainty)
     def __rdiv__(self, other):
         if isinstance(other, Number):
             # Assume errors are extremes
             # Use largest uncertainty up/down
             value = other / self.value
-            unc_up = abs((other / self.value) - (other / (self.value + self.uncertainty)))
-            unc_dn = abs((other / self.value) - (other / (self.value - self.uncertainty)))
-            uncertainty = max(unc_up, unc_dn)
+            up = self.value + self.uncertainty
+            dn = self.value - self.uncertainty
+            if dn < 0 and 0 < up:
+                print "WARNING :: Dividing by number consistent with zero:", self
+                print "INFO :: Setting error to infinity"
+                uncertainty = float("inf")
+            else:
+                unc_up = abs((value) - (other / up))
+                unc_dn = abs((value) - (other / dn))
+                uncertainty = max(unc_up, unc_dn)
             return UncFloat(value, uncertainty)
         elif isinstance(other, UncFloat):
             print "TESTING:", other
@@ -85,10 +92,19 @@ class UncFloat :
             uncertainty = self.uncertainty / other
         else:
             value = self.value / other.value
-            rel_unc1 = self.uncertainty /abs(self.value)
-            rel_unc2 = other.uncertainty / abs(other.value)
-            rel_unc = sqrt(rel_unc1**2 + rel_unc2**2)
-            uncertainty = rel_unc * abs(value)
+            dn = other.value - other.uncertainty
+            up = other.value + other.uncertainty
+            if dn < 0 and 0 < up:
+                print "WARNING :: Dividing by number consistent with zero:", other
+                print "INFO :: Setting error to infinity"
+                uncertainty = float("inf")
+            else:
+                # Add relative error in quadrature
+                # Solve for relative uncertainty to avoid problem from nominal = 0 in numerator
+                # This would lead to undefined relative error (e.g. uncX/X = uncX/0 = undefined)
+                x1 = self.value / other.value
+                x2 = other.uncertainty / other.value**2
+                uncertainty = sqrt(x1**2 + x2**2)
         return UncFloat(value, uncertainty)
     def __lt__(self, other) :
         return self.value < other.value
@@ -308,6 +324,9 @@ class YieldTbl:
         #Idx label must agree with label used in formula string
         for col_name in self.col_names:
             col = self.get_column(col_name)
+            if '()' in formula:
+                print "ERROR :: Empty term in formula:", formula
+                formula = 'float("NaN")'
             try:
                 result = eval(formula)
             except ZeroDivisionError:
@@ -387,7 +406,6 @@ class YieldTbl:
             if sig_flag:
                 sig_samples.append(row_name)
         return sig_samples
-
     
     def replace_formula_keywords(self, keyword):
         if not self.common_column_prefix:
@@ -462,8 +480,8 @@ class YieldTbl:
             table_format = 'latex_raw'
             str_f = lambda x : str(x).replace("+/-","$\pm$")
         else:
-            col_names = self.col_displaynames
-            row_names = self.row_displaynames
+            col_names = self.col_names
+            row_names = self.row_names
             table_format = 'psql'
             str_f = str     
             
@@ -496,9 +514,7 @@ class YieldTbl:
             print_lst.append(hline)
             if latex: 
                 print_lst.insert(4,hline)
-                #print_lst.insert(0,"\\adjustbox{max height=\dimexpr\\textheight-6cm\\relax, max width=\\textwidth}{")
                 print_lst.append(end_tabular)
-                #print_lst.append("}")
             print_str = "\n".join(print_lst)
         return print_str
 

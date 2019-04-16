@@ -35,6 +35,7 @@ def strip_for_root_name(string):
     string = re.sub(r'[(){}[\]\ ]+','', string)
     string = re.sub(r'-','_minus_', string)
     string = re.sub(r'/','_divide_', string)
+    string = re.sub(r'\*','_times_', string)
     string = re.sub(r'\.','_', string)
     return string
 
@@ -818,7 +819,7 @@ def draw_text(x=0.7, y=0.65, font=42, color=ROOT.kBlack, text="", size=0.04, ang
     l.SetTextAngle(angle)
     l.DrawLatex(x, y, text)
 
-def draw_atlas_label(status, analysis, region, move_x = 0, move_y = 0, scale = 1):
+def draw_atlas_label(status, lumi, region, move_x = 0, move_y = 0, scale = 1):
     left_edge = 0.18 + move_x
     status_indent = (0.13) * scale
     bottom_edge = (0.73 + move_y)
@@ -829,12 +830,13 @@ def draw_atlas_label(status, analysis, region, move_x = 0, move_y = 0, scale = 1
         x=left_edge,               y=bottom_edge+3*vspacing, size=size+0.01, font=72)
     draw_text(text=status,
         x=left_edge+status_indent, y=bottom_edge+3*vspacing, size=size+0.01, font=42)
-    draw_text(text="#sqrt{s} = 13 TeV, 36.1 fb^{-1}",
+    #TODO: Automate determining the luminosity
+    draw_text(text=lumi,
         x=left_edge,               y=bottom_edge+2*vspacing, size=size)
-    draw_text(text=analysis,
-        x=left_edge,               y=bottom_edge+vspacing,   size=size)
     draw_text(text=region,
-        x=left_edge,               y=bottom_edge,            size=size)
+        x=left_edge,               y=bottom_edge+vspacing,   size=size)
+    #draw_text(text=analysis,
+    #    x=left_edge,               y=bottom_edge,            size=size)
 
 # ----------------------------------------------
 #  TLine Methods

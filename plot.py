@@ -50,7 +50,7 @@ class Types(Enum):
 class PlotBase(object):
     save_dir = './'
     output_format = 'pdf'
-    analysis_name = "<analysis name>"
+    atlas_lumi = "<analysis lumi>"
     atlas_status = "Internal"
     def __init__(self):
         self.suffix = ""
@@ -77,11 +77,12 @@ class Plot1D(PlotBase) :
     norm_ymin = 0
     norm_ymax = 1.5
 
-    logy_norm_min = 1e-7
-    logy_norm_max = 1e4
+    logy_norm_min = 1e-4
+    logy_norm_max = 1e2
 
     auto_set_ylimits = True
-    doLogY = True
+    doLogY = False
+    doNorm = False
 
 
     def __init__(self,
@@ -98,7 +99,7 @@ class Plot1D(PlotBase) :
         nbins = 20,
         bin_edges = [],
         doLogY = None,
-        doNorm = False,
+        doNorm = None,
         add_overflow = True,
         add_underflow = False,
         leg_is_left = False,
@@ -118,12 +119,11 @@ class Plot1D(PlotBase) :
         self.name = name if name else determine_name(region, variable)
         self.suffix = suffix
 
-
         # Flags
         self.is2D = False
         self.is3D = False
-        if doLogY: self.doLogY = doLogY
-        self.doNorm = doNorm
+        if doLogY!=None: self.doLogY = doLogY
+        if doNorm!=None: self.doNorm = doNorm
 
         self.add_overflow = add_overflow
         self.add_underflow = add_underflow
@@ -151,6 +151,7 @@ class Plot1D(PlotBase) :
         self.rebin_bins = []
 
     def update(self,
+        #TODO: Split this into several update functions
         region = None,
         variable = None,
         name = None,
@@ -205,20 +206,20 @@ class Plot1D(PlotBase) :
         if logy_norm_min: self.logy_norm_min = logy_norm_min
         if logy_norm_max: self.logy_norm_max = logy_norm_max
 
-        self.xmin, self.xmax, self.ymin, self.ymax = self.determine_range(bin_range)
-        if nbins or bin_width:
-            self.nbins = determine_nbins(self.xmax, self.xmin, bin_width, self.variable) if bin_width else nbins
-        
         assert bool(bin_edges) + bool(nbins) + bool(bin_width) <= 1, (
                 "ERROR Plot1D :: Only provide one bin value option")
         if bin_edges:
             bin_range = [bin_edges[0], bin_edges[-1]]
-        self.xmin, self.xmax, self.ymin, self.ymax = self.determine_range(bin_range)
+
         if bin_range or nbins or bin_width:
+            self.xmin, self.xmax, self.ymin, self.ymax = self.determine_range(bin_range)
             self.nbins, self.bin_edges = determine_bins(bin_edges, bin_width, nbins, self.xmin, self.xmax, variable)
+            xlabel = self.xlabel.split('[')[0].strip()
+            ylabel = self.ylabel.split('/')[0].strip()
+            self.xlabel, self.ylabel = self.determine_labels(xlabel, ylabel)
 
     def bin_width(self):
-        return (self.xmax - self.xmin) / self.nbins
+        return (float(self.xmax) - float(self.xmin)) / float(self.nbins)
 
     def determine_range(self, bin_range):
         '''
@@ -240,6 +241,13 @@ class Plot1D(PlotBase) :
         assert not bin_range or len(bin_range) in [2,4],(
             'ERROR :: Unrecognized bin range format:', bin_range)
 
+        # Check if user provided all ranges
+        if len(bin_range) == 4:
+            # Assume user doesn't want to override their settings
+            self.auto_set_ylimits = False 
+            return tuple(bin_range) 
+       
+        # Automatically set undefined ranges
         if self.doLogY and self.doNorm:
             ymin = self.logy_norm_min
             ymax = self.logy_norm_max
@@ -260,8 +268,6 @@ class Plot1D(PlotBase) :
             return  xmin, xmax, ymin, ymax
         elif len(bin_range) == 2:
             return bin_range[0], bin_range[1], ymin, ymax
-        elif len(bin_range) == 4:
-            return bin_range[0], bin_range[1], bin_range[2], bin_range[3]
 
     def determine_labels(self, xlabel, ylabel):
 
@@ -313,8 +319,14 @@ class Plot1D(PlotBase) :
         for ibin, label in zip(range(n_labels), self.bin_labels):
             if not label: continue
             x_axis.SetBinLabel(ibin+1, label)
-        x_axis.SetLabelOffset(0.005)
-        x_axis.SetLabelSize(1.5*x_axis.GetLabelSize())
+        # For Ratio
+        #x_axis.SetLabelOffset(0.02)
+        #x_axis.SetLabelSize(0.11)
+        #x_axis.SetTitleOffset(1.8)
+        # For non-Ratio
+        x_axis.SetLabelOffset(0.01)
+        x_axis.SetLabelSize(0.07)
+        x_axis.SetTitleOffset(2.0)
 
     def setDefaultPads(self, name) :
         self.pads = Pads(name)
@@ -338,6 +350,7 @@ class Plot1D(PlotBase) :
 
     def make_data_mc_stack_plot(self, reg_name, hists, suffix=''):
         # Get Canvas
+        self.setStackPads(self.name)
         can = self.pads.canvas
         can.cd()
         if self.doLogY : can.SetLogy(True)
@@ -364,6 +377,7 @@ class Plot1D(PlotBase) :
     def draw_data_mc_stack_plot(self, reg_name, hists):
         ''' In a separate function so it can be used when making stack + ratio plots '''
         # Draw the histograms
+        hists.axis
         hists.axis.Draw()
         hists.mc_stack.Draw("HIST SAME")
         hists.mc_errors.Draw("E2 same")
@@ -372,10 +386,11 @@ class Plot1D(PlotBase) :
         if hists.data: hists.data.Draw("option same pz 0")
         hists.leg.Draw()
         hists.leg_sig.Draw()
-        pu.draw_atlas_label(self.atlas_status, self.analysis_name, reg_name)
+        pu.draw_atlas_label(self.atlas_status, self.atlas_lumi, reg_name)
 
     def make_data_mc_stack_with_ratio_plot(self, reg_name, stack_hists, ratio_hists):
         # Pads
+        self.setRatioPads(self.name)
         rcan = self.pads #remove relableing
 
         ############################################################################
@@ -385,6 +400,7 @@ class Plot1D(PlotBase) :
         rcan.upper_pad.Update()
 
         # Draw the histograms
+        stack_hists.axis.GetXaxis().SetLabelOffset(-999)
         self.draw_data_mc_stack_plot(reg_name, stack_hists)
 
         # Reset axis
@@ -416,6 +432,7 @@ class Plot1D(PlotBase) :
 
     def make_overlay_plot(self, name, overlay_hist, suffix=''):
         # Pads
+        self.setStackPads(self.name)
         can = self.pads.canvas
 
         can.cd()
@@ -427,7 +444,7 @@ class Plot1D(PlotBase) :
         for hist in overlay_hist.hists:
             hist.Draw("hist same")
         overlay_hist.leg.Draw()
-        pu.draw_atlas_label(self.atlas_status, self.analysis_name, name)
+        pu.draw_atlas_label(self.atlas_status, self.atlas_lumi, name)
 
         # Reset axis
         can.Update()
@@ -454,7 +471,7 @@ class Plot1D(PlotBase) :
         for hist in overlay_hist.hists:
             hist.Draw("hist same")
         overlay_hist.leg.Draw()
-        #pu.draw_atlas_label(self.atlas_status, self.analysis_name, name)
+        #pu.draw_atlas_label(self.atlas_status, self.atlas_lumi, name)
 
         # Reset axis
         rcan.upper_pad.Update()
@@ -470,8 +487,6 @@ class Plot1D(PlotBase) :
         yax.SetLabelSize(0.13 * 0.81)
         yax.SetLabelOffset(0.98 * 0.013 * 1.08)
         yax.SetTitleOffset(0.45 * 1.2)
-        yax.SetLabelFont(42)
-        yax.SetTitleFont(42)
         yax.SetNdivisions(5)
 
         # xaxis
@@ -480,8 +495,6 @@ class Plot1D(PlotBase) :
         xax.SetLabelSize(yax.GetLabelSize())
         xax.SetLabelOffset(1.15*0.02)
         xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
-        xax.SetLabelFont(42)
-        xax.SetTitleFont(42)
 
         ratio_hist.axis.Draw("axis")
         ratio_hist.ratio.Draw('same p') # Draw only the markers
@@ -502,6 +515,7 @@ class Plot1D(PlotBase) :
 
     def make_region_compare_plot(self, sample_name, hists, suffix=""):
         # Get Canvas
+        self.setStackPads(self.name)
         can = self.pads.canvas
         can.cd()
         if self.doLogY : can.SetLogy(True)
@@ -511,7 +525,7 @@ class Plot1D(PlotBase) :
             hist.SetLineWidth(3)
             hist.Draw("HIST SAME")
         hists.leg.Draw()
-        pu.draw_atlas_label(self.atlas_status, self.analysis_name, sample_name)
+        pu.draw_atlas_label(self.atlas_status, self.atlas_lumi, sample_name)
 
         # Reset axis
         can.RedrawAxis()
@@ -525,6 +539,7 @@ class Plot1D(PlotBase) :
 
     def make_cutscan1d_plot(self, hists, reg_name, roc_curve=False):
         # Get Canvas
+        self.setCutScanPads1D(self.name)
         pads = self.pads
         pads.hist_pad.cd()
         if self.doLogY : pads.hist_pad.SetLogy(True)
@@ -538,7 +553,7 @@ class Plot1D(PlotBase) :
         hists.bkgd.SetLineWidth(3)
         hists.bkgd.Draw("HIST SAME")
         hists.hist_leg.Draw()
-        pu.draw_atlas_label('Internal','Higgs LFV', reg_name)
+        pu.draw_atlas_label(self.atlas_status, self.atlas_lumi, reg_name)
         
         # Reset axis
         pads.hist_pad.RedrawAxis()
@@ -552,22 +567,28 @@ class Plot1D(PlotBase) :
         hists.signal_eff.SetLineWidth(3)
         hists.signal_eff.SetLineWidth(3)
         hists.signal_eff.GetYaxis().SetLabelOffset(0.85*hists.signal_eff.GetYaxis().GetLabelOffset())
-        hists.signal_eff.Draw("SAME")
+        hists.signal_eff.Draw("HIST SAME")
         hists.bkgd_rej.SetFillColor(0)
         hists.bkgd_rej.SetLineWidth(3)
-        hists.bkgd_rej.Draw("SAME")
+        hists.bkgd_rej.Draw("HIST SAME")
         hists.eff_leg.Draw()
 
         # Add S/B plot
         pads.s_over_b_pad.cd()
         hists.s_over_b.SetFillColor(hists.s_over_b.GetLineColor())
         hists.s_over_b.GetYaxis().SetLabelOffset()
-        hists.s_over_b.Draw("SAME")
+        hists.s_over_b.Draw("HIST SAME")
 
         # Add ROC Curve
-        pads.roc_pad.cd()
-        #pads.roc_pad.SetLogy(True)
-        hists.roc_graph.Draw("AC*")
+        if roc_curve:
+            pads.roc_pad.cd()
+            #pads.roc_pad.SetLogy(True)
+            hists.roc_graph.Draw("AC*")
+        else:
+            pads.zn_sig_pad.cd()
+            hists.zn_sig.SetFillColor(hists.zn_sig.GetLineColor())
+            hists.zn_sig.GetYaxis().SetLabelOffset()
+            hists.zn_sig.Draw("HIST SAME")
 
         # Save the histogram
         self.save_plot(pads.canvas, suffix="cutScan")
@@ -769,6 +790,7 @@ class Plot2D(PlotBase) :
     def make_2d_hist(self, hists, suffix = ""):
         if not hists.hist: return
         # Get canvas
+        self.set2DPads(self.name+suffix)
         can = self.pads.canvas
         can.cd()
         if self.doLogZ : can.SetLogz(True)
@@ -778,9 +800,9 @@ class Plot2D(PlotBase) :
 
         # Formatting
         if self.doNorm:
-            pu.normalize_plot(self.hist)
+            pu.normalize_plot(hists.hist)
         if self.auto_set_zlimits:
-            reformat_zaxis(self.hist)
+            reformat_zaxis(hists.hist, self.doLogZ)
         hists.axis.Draw()
         hists.hist.Draw("%s SAME" % self.style)
 
@@ -794,6 +816,7 @@ class Plot2D(PlotBase) :
 
     def make_cutscan2d_plot(self, hists, reg_name, roc_curve=False):
         # Get Canvas
+        self.setCutScanPads2D(self.name)
         pads = self.pads
         pads.sig_hist_pad.cd()
         if self.doLogZ : pads.sig_hist_pad.SetLogz(True)
@@ -857,28 +880,6 @@ class Plot2D(PlotBase) :
 
         # Save the histogram
         self.save_plot(pads.canvas, suffix="cutScan")
-
-    def reformat_zaxis(self):
-        # Get maximum histogram z-value
-        maxz = self.hist.GetMaximum()
-        minz = self.hist.GetMinimum()
-        assert maxz > 0
-
-        # Get default z-axis max and min limits
-        if self.doLogZ:
-            maxz = 10**(pu.get_order_of_mag(maxz))
-            if minz > 0:
-                minz = 10**(pu.get_order_of_mag(minz))
-            else:
-                minz = 10**(pu.get_order_of_mag(maxz) - 7)
-        else:
-            minz = 0
-
-        # Get z-axis max multiplier to fit labels
-
-        # reformat the axis
-        self.hist.SetMaximum(maxz)
-        self.hist.SetMinimum(minz)
 
 
     def Print(self) :
@@ -1003,25 +1004,28 @@ def determine_nbins(ax_max, ax_min, bin_width, variable = "?", update_range = Tr
         (int) - the number axis bins
     '''
     assert ax_min != ax_max, ("ERROR :: axis range not set")
+    
     bin_width = float(bin_width)
     ax_range = float(ax_max - ax_min)
+    
+    # Check if bin width is a divisor of the axis range
+    # If not, expand range to fit bins
+    # Epsilon used to account for floating point rounding errors
+    eps = 0.0000001
     remainder = ax_range % bin_width
-    cutoff_range = bin_width - remainder if remainder else 0
+    cutoff_range = bin_width - remainder if remainder > eps else 0
     int_bins = (isinstance(ax_min, (int, long))
             and isinstance(ax_max, (int, long)))
-
-    eps = 0.0000001
-    notify = cutoff_range > eps and abs(cutoff_range - bin_width) > eps
-    if update_range and notify:
+    if update_range and cutoff_range > eps:
         print "WARNING :: bin_width is not a divisor of axis range.",
         print "Variable = %s, Range = [%f,%f], bin_width = %f"%(
                 variable, ax_min, ax_max, bin_width)
         print "Expanding range by %f to fit"%cutoff_range
-    if update_range and ax_min == 0:
-        ax_max += cutoff_range
-    elif update_range and ax_min != 0:
-        ax_min -= 0.5 * cutoff_range
-        ax_max += 0.5 * cutoff_range
+        if ax_min == 0:
+            ax_max += cutoff_range
+        elif ax_min != 0:
+            ax_min -= 0.5 * cutoff_range
+            ax_max += 0.5 * cutoff_range
 
     if int_bins:
         ax_min = int(round(ax_min))
@@ -1044,6 +1048,29 @@ def determine_bins(edges, width, nbins, lo, hi, var):
     else:
         nbins = len(edges) - 1
     return nbins, array('d', edges)
+
+def reformat_zaxis(hist, doLogZ):
+    # Get maximum histogram z-value
+    maxz = hist.GetMaximum()
+    minz = hist.GetMinimum()
+    assert maxz > 0
+
+    # Get default z-axis max and min limits
+    if doLogZ:
+        maxz = 10**(pu.get_order_of_mag(maxz))
+        if minz > 0:
+            minz = 10**(pu.get_order_of_mag(minz))
+        else:
+            minz = 10**(pu.get_order_of_mag(maxz) - 7)
+    else:
+        minz = 0
+
+    # Get z-axis max multiplier to fit labels
+
+    # reformat the axis
+    hist.SetMaximum(maxz)
+    hist.SetMinimum(minz)
+
 ################################################################################
 # TPad handler classes
 ################################################################################
@@ -1107,7 +1134,7 @@ class RatioPads :
         # set margins
         up.SetRightMargin(0.05)
         up.SetLeftMargin(0.14)
-        up.SetTopMargin(0.7 * up.GetTopMargin())
+        up.SetTopMargin(1.3 * up.GetTopMargin())
         up.SetBottomMargin(0.09)
 
         dn.SetRightMargin(up.GetRightMargin())
@@ -1195,6 +1222,7 @@ class CutScanPads1D(Pads):
         self.hist_pad = r.TPad("hist_pad", "hist_pad", 0.0, 0.0, 1.0, 1.0)
         self.eff_pad = r.TPad("eff_pad", "eff_pad", 0.0, 0.0, 1.0, 1.0)
         self.s_over_b_pad = r.TPad("s_over_b_pad", "s_over_b_pad", 0.0, 0.0, 1.0, 1.0)
+        self.zn_sig_pad = r.TPad("zn_sig_pad", "zn_sig_pad", 0.0, 0.0, 1.0, 1.0)
         self.roc_pad = r.TPad("roc_pad", "roc_pad", 0.0, 0.0, 1.0, 1.0)
         self.set_pad_dimensions()
 
@@ -1203,7 +1231,8 @@ class CutScanPads1D(Pads):
         up  = self.hist_pad
         mid1 = self.eff_pad
         mid2 = self.s_over_b_pad
-        dn = self.roc_pad
+        dn = self.zn_sig_pad
+        
 
         # Define percentage heigh of each pad
         can.cd()
@@ -1251,14 +1280,14 @@ class CutScanPads1D(Pads):
         # bottom margins
         up.SetBottomMargin(0.01)
         mid1.SetBottomMargin(0.01)
-        mid2.SetBottomMargin(0.2)
-        dn.SetBottomMargin(0.15)
+        mid2.SetBottomMargin(0.01)
+        dn.SetBottomMargin(0.25)
 
         # set top margins
         up.SetTopMargin(0.09)
         mid1.SetTopMargin(0.01)
         mid2.SetTopMargin(0.01)
-        dn.SetTopMargin(0.1)
+        dn.SetTopMargin(0.01)
        
         # Add pads to main canvas
         up.Draw()
@@ -1272,6 +1301,7 @@ class CutScanPads1D(Pads):
         self.eff_pad = mid1 
         self.s_over_b_pad = mid2 
         self.roc_pad = dn 
+        self.zn_sig_pad = dn
 
 class CutScanPads2D(Pads):
     def __init__(self, name, width=600, height=1200):

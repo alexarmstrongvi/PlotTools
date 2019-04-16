@@ -6,7 +6,8 @@ import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True # don't let root steal cmd-line options
 r.gROOT.SetBatch(True)
 r.gStyle.SetOptStat(False)
-
+r.RooStats.NumberCountingUtils
+import ROOT.RooStats.NumberCountingUtils as ncu
 # Turn off root ownership when creating classes
 r.TEventList.__init__._creates = False
 r.TH1F.__init__._creates = False
@@ -76,6 +77,7 @@ class CutScan1D(HistBase):
         self.signal_eff = None
         self.bkgd_rej = None
         self.s_over_b = None
+        self.zn_sig = None
         self.roc_graph = None
 
         self.axis = make_plot1D_axis(plot)
@@ -106,6 +108,7 @@ class CutScan1D(HistBase):
         self.eff_leg.AddEntry(self.bkgd_rej, "Background Rej", 'l')
         
         self.s_over_b = self.make_s_over_b_hist(self.signal, self.bkgd, xcut_is_max)
+        self.zn_sig = self.make_zn_sig_hist(self.signal, self.bkgd, xcut_is_max)
         self.roc_graph = self.make_roc_curve()
     
     def list_of_root_objects(self):
@@ -160,13 +163,47 @@ class CutScan1D(HistBase):
         xax.SetLabelSize(0.08 * 0.81)
         xax.SetLabelOffset(1.15*0.02)
         #xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
-        xax.SetLabelFont(42)
-        xax.SetTitleFont(42)
         
         signal_cm.Delete()
         bkgd_cm.Delete()
 
         return s_over_b
+
+    def make_zn_sig_hist(self, signal, bkgd, xcut_is_max):
+        signal_cm = GetCumulative1D(signal, xcut_is_max) 
+        bkgd_cm = GetCumulative1D(bkgd, xcut_is_max) 
+
+        zn_sig = signal_cm.Clone(signal.GetName() + "_zn_sig")
+        last_bin = zn_sig.GetNbinsX()
+        num = 0.1*(signal_cm.GetBinContent(last_bin)/bkgd_cm.GetBinContent(last_bin) - 1)
+        den = bkgd_cm.GetBinError(last_bin)/bkgd_cm.GetBinContent(last_bin)
+        dummy_scale = num/den 
+        for xbin in range(1, zn_sig.GetNbinsX()+1):
+            sig_yld = signal_cm.GetBinContent(xbin)
+            bkd_yld = bkgd_cm.GetBinContent(xbin)
+            bkd_unc = bkgd_cm.GetBinError(xbin)/bkd_yld if bkd_yld else 1
+            bkd_unc *= dummy_scale
+            zn = ncu.BinomialExpZ(sig_yld, bkd_yld, bkd_unc)
+            zn_sig.SetBinContent(xbin, zn)
+        zn_sig.GetYaxis().SetTitle("Zn Sig. (scaled)")
+        maxy = zn_sig.GetMaximum()
+        maxy = maxy + 0.2*abs(maxy)
+        miny = zn_sig.GetMaximum()
+        miny = miny - 0.2*abs(miny)
+        zn_sig.SetMaximum(maxy)
+        zn_sig.SetMinimum(0)
+       
+        format_y_axis(zn_sig)
+        xax = zn_sig.GetXaxis()
+        xax.SetTitleSize(0.07)
+        xax.SetLabelSize(0.08 * 0.81)
+        xax.SetLabelOffset(1.15*0.02)
+        #xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
+        
+        signal_cm.Delete()
+        bkgd_cm.Delete()
+
+        return zn_sig
 
     def make_roc_curve(self):
         roc_plot = r.TGraph()
@@ -329,10 +366,12 @@ def GetCumulative1D(hist, cut_is_max):
     cumulative_hist.Reset()
 
     of_xbin = hist.GetNbinsX()+1 # overflow x-bin
+    error = r.Double(0.0)
     for xbin in range(of_xbin+1):
         x1, x2 = (0, xbin) if cut_is_max else (xbin, of_xbin)
-        val = hist.Integral(x1,x2)
+        val = hist.IntegralAndError(x1, x2, error)
         cumulative_hist.SetBinContent(xbin, val)
+        cumulative_hist.SetBinError(xbin, error)
 
     return cumulative_hist
 
@@ -368,6 +407,7 @@ def GetCumulative2D(hist, xcut_is_max, ycut_is_max, and_cuts):
                 
                 val += val_x + val_y
 
+            print "xbin = %d, ybin = %d, cumulative = %.2f" % (xbin, ybin, val)
             cumulative_hist.SetBinContent(xbin, ybin, val)
 
     return cumulative_hist
@@ -378,8 +418,6 @@ def format_y_axis(hist):
     yax.SetLabelSize(0.08 * 0.81)
     yax.SetLabelOffset(0.98 * 0.013 * 1.08)
     yax.SetTitleOffset(0.45 * 1.2)
-    yax.SetLabelFont(42)
-    yax.SetTitleFont(42)
 
 def format_x_axis(hist):
     xax = hist.GetXaxis()
@@ -387,8 +425,6 @@ def format_x_axis(hist):
     xax.SetLabelSize(0.08 * 0.81)
     xax.SetLabelOffset(1.15*0.02)
     #xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
-    xax.SetLabelFont(42)
-    xax.SetTitleFont(42)
 
 class RatioHist1D(HistBase) :
     ratio_ymax = 2.0
@@ -434,9 +470,12 @@ class RegionCompare1D(HistBase):
         self.axis = None
         self.leg = None
         self.hists = []
-
+        
         self.axis = make_plot1D_axis(plot)
         self.leg = make_basic_legend(plot)
+        if not regions or not samples: 
+            print "WARNING :: Either regions or samples is empty for plot:", plot.var
+            return
         for ii, reg in enumerate(regions):
             comb_hist = None
             for sample in samples:
@@ -494,7 +533,7 @@ def reformat_axis(plot, axis, hists):
         miny = 0
 
     # Get y-axis max multiplier to fit labels
-    max_mult = 1e5 if plot.doLogY else 1.8
+    max_mult = 1e2 if plot.doLogY else 1.8
 
     # reformat the axis
     axis.SetMaximum(max_mult*maxy)
@@ -529,7 +568,7 @@ def make_hist1D(plot, reg, samples, samples_name=""):
     
     for sample in samples:
         # Draw final histogram (i.e. selections and weights applied)
-        if plot.variable != samples[0].weight_str:
+        if samples[0].weight_str:
             weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
         else:
             weight_str = 1
@@ -578,31 +617,23 @@ class DataMCRatioHist1D(RatioHist1D) :
         yax = h_sm.GetYaxis()
         yax.SetRangeUser(0, self.ratio_ymax)
         yax.SetTitle(self.ratio_label)
-        yax.SetTitleSize(0.14 * 0.83)
-        yax.SetLabelSize(0.13 * 0.81)
-        yax.SetLabelOffset(0.98 * 0.013 * 1.08)
-        yax.SetTitleOffset(0.45 * 1.2)
-        yax.SetLabelFont(42)
-        yax.SetTitleFont(42)
+        yax.SetTitleSize(0.11)
+        yax.SetLabelSize(0.11)
+        #yax.SetLabelOffset(0.98 * 0.013 * 1.08)
+        yax.SetTitleOffset(0.5)
         yax.SetNdivisions(5)
 
         # xaxis
         xax = h_sm.GetXaxis()
-        xax.SetTitleSize(1.1 * 0.14)
-        xax.SetLabelSize(yax.GetLabelSize())
-        xax.SetLabelOffset(1.15*0.02)
-        xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
-        xax.SetLabelFont(42)
-        xax.SetTitleFont(42)
+        xax.SetTitleSize(0.11)
+        xax.SetLabelSize(0.11)
+        xax.SetLabelOffset(0.025)
+        xax.SetTitleOffset(1.3)
 
         h_sm.SetTickLength(0.06)
 
-        if plot.bin_labels and plot.ptype == Types.ratio:
+        if plot.bin_labels:
             plot.set_bin_labels(h_sm)
-
-        #if plot.rebin_bins:
-        #    print "WARNING :: rebinning not yet implemented"
-        #    #TODO: Implement rebinning
 
         return h_sm
 
@@ -652,7 +683,8 @@ class DataMCRatioHist1D(RatioHist1D) :
         g_data.Delete()
 
 def make_plot1D_axis(plot):
-    hax = r.TH1F("axes", "", int(plot.nbins), plot.xmin, plot.xmax)
+    hax = r.TH1F("axes", "", plot.nbins, plot.bin_edges)
+    #hax = r.TH1F("axes", "", int(plot.nbins), plot.xmin, plot.xmax)
     hax.SetMinimum(plot.ymin)
     hax.SetMaximum(plot.ymax)
     xax = hax.GetXaxis()
@@ -664,8 +696,9 @@ def make_plot1D_axis(plot):
     yax = hax.GetYaxis()
     yax.SetTitle(plot.ylabel)
 
-    if plot.bin_labels and plot.ptype == Types.stack:
+    if plot.bin_labels:
         plot.set_bin_labels(hax)
+        
     if plot.rebin_bins:
         new_bins = array('d', plot.rebin_bins)
         hax_rebinned = hax.Rebin(len(new_bins)-1, 'axes_rebinned', new_bins)
@@ -708,10 +741,9 @@ class SampleCompare1D(HistBase):
                 ]
 
 class DataMCStackHist1D(HistBase):
-    def __init__(self, plot, reg, YIELD_TBL, data, bkgds, sigs=None):
+    def __init__(self, plot, reg, data, bkgds, sigs=None):
         # Get plotting primitives
         # Not all primitives are for drawing. Some are for preserving pointers
-        #TOOD: Remove YIELD_TBL after validating
         self.leg_sig = None
         self.leg = None
         self.axis = None
@@ -726,9 +758,9 @@ class DataMCStackHist1D(HistBase):
 
         self.make_stack_legend(plot, reg)
         self.axis = make_plot1D_axis(plot)
-        self.add_stack_backgrounds(plot, reg, YIELD_TBL, bkgds)
-        if sigs: self.add_stack_signals(plot, reg, YIELD_TBL, sigs)
-        self.add_stack_data(plot, reg, YIELD_TBL, data)
+        self.add_stack_backgrounds(plot, reg, bkgds)
+        if sigs: self.add_stack_signals(plot, reg, sigs)
+        self.add_stack_data(plot, reg, data)
         self.add_stack_mc_errors(plot, reg)
         if plot.doNorm:
             self.normalize_stack(plot, reg)
@@ -760,10 +792,10 @@ class DataMCStackHist1D(HistBase):
 
         self.leg.SetNColumns(2)
         # TODO: Incorporate signal legend
-        self.leg_sig = pu.default_legend(xl=0.55, yl=0.65, xh=0.91, yh=0.71)
+        self.leg_sig = pu.default_legend(xl=0.55, yl=0.60, xh=0.91, yh=0.71)
         self.leg_sig.SetNColumns(1)
 
-    def add_stack_backgrounds(self, plot, reg, YIELD_TBL, bkgds):
+    def add_stack_backgrounds(self, plot, reg, bkgds):
 
         # Initilize lists and defaults
         histos = []
@@ -774,15 +806,12 @@ class DataMCStackHist1D(HistBase):
         # Make MC sample hists
         for mc_sample in bkgds :
             # Initilize histogram
-            var_name = pu.strip_for_root_name(plot.variable)
-            h_name = "h_"+reg.name+'_'+mc_sample.name+"_"+ var_name
-            hists_to_clear.append(h_name)
-            h = pu.th1d(h_name, "", int(plot.nbins),
-                        plot.xmin, plot.xmax,
-                        plot.xlabel, plot.ylabel)
+            h = make_hist1D(plot, reg, mc_sample)
+            
+            hists_to_clear.append(h.GetName())
 
-            h.SetLineColor(mc_sample.color)
             h.GetXaxis().SetLabelOffset(-999)
+
             if mc_sample.isSignal:
                 h.SetLineWidth(2)
                 h.SetLineStyle(2)
@@ -792,44 +821,14 @@ class DataMCStackHist1D(HistBase):
                 h.SetFillStyle(1001)
             h.Sumw2
 
-            # Draw final histogram (i.e. selections and weights applied)
-            if plot.variable != mc_sample.weight_str:
-                weight_str = "%s * %s"%(mc_sample.weight_str, str(mc_sample.scale_factor))
-            else:
-                weight_str = 1
-            cut = "(%s) * %s"%(reg.tcut, weight_str)
-            cut = r.TCut(cut)
-            sel = r.TCut("1")
-            draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
-            mc_sample.tree.Draw(draw_cmd, cut * sel, "goff")
-
-
-            # Yield +/- stat error
-            stat_err = r.Double(0.0)
-            integral = h.IntegralAndError(0,-1,stat_err)
-
-            # Rebin
-            if plot.rebin_bins:
-                new_bins = array('d', plot.rebin_bins)
-                h = h.Rebin(len(new_bins)-1, h_name, new_bins)
-
             h.leg_name = mc_sample.displayname #dynamic class members...ooo yeah!
-
-            # Add overflow
-            if plot.add_overflow:
-                pu.add_overflow_to_lastbin(h)
-            if plot.add_underflow:
-                pu.add_underflow_to_firstbin(h)
 
             # Record all and non-empty histograms
             if mc_sample.isSignal:
                 leg_sig.AddEntry(h, mc_sample.displayname, "l")
-                YIELD_TBL.signals[mc_sample.name] = UncFloat(integral, stat_err)
             else:
                 all_histos.append(h)
-                histos.append(h) if integral > 0 else avoid_bkg.append(mc_sample.name)
-                YIELD_TBL.mc[mc_sample.name] = UncFloat(integral, stat_err)
-
+                histos.append(h) if h.Integral() > 0 else avoid_bkg.append(mc_sample.name)
         if not len(histos):
             print "ERROR (make_stack_background) :: All SM hists are empty. Skipping"
             return
@@ -852,92 +851,35 @@ class DataMCStackHist1D(HistBase):
         self.mc_total.SetFillStyle(0)
         self.mc_total.SetLineWidth(3)
 
-    def add_stack_signals(self, plot, reg, YIELD_TBL, signals):
+    def add_stack_signals(self, plot, reg, signals):
         # Make MC sample hists
         for sig_sample in signals:
             # Initilize histogram
-            var_name = pu.strip_for_root_name(plot.variable)
-            h_name = "h_"+reg.name+'_'+sig_sample.name+"_"+ var_name
-            h = pu.th1d(h_name, "", int(plot.nbins),
-                        plot.xmin, plot.xmax,
-                        plot.xlabel, plot.ylabel)
-
-            h.SetLineColor(sig_sample.color)
+            h = make_hist1D(plot, reg, sig_sample)
+            
             h.GetXaxis().SetLabelOffset(-999)
             h.SetLineWidth(2)
             h.SetLineStyle(2)
             h.SetFillStyle(0)
-            h.Sumw2
-
-            # Draw final histogram (i.e. selections and weights applied)
-            if plot.variable != sig_sample.weight_str:
-                weight_str = "%s * %s"%(sig_sample.weight_str, str(sig_sample.scale_factor))
-            else:
-                weight_str = "1"
-                
-            draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
-            sig_sample.tree.Draw(draw_cmd, weight_str, "goff")
-
-            # Yield +/- stat error
-            stat_err = r.Double(0.0)
-            integral = h.IntegralAndError(0,-1,stat_err)
-
-            # Rebin
-            if plot.rebin_bins:
-                new_bins = array('d', plot.rebin_bins)
-                h = h.Rebin(len(new_bins)-1, h_name, new_bins)
-
+            
             h.leg_name = sig_sample.displayname #dynamic class members...ooo yeah!
-
-            # Add overflow
-            if plot.add_overflow:
-                pu.add_overflow_to_lastbin(h)
-            if plot.add_underflow:
-                pu.add_underflow_to_firstbin(h)
 
             # Record all and non-empty histograms
             self.leg_sig.AddEntry(h, sig_sample.displayname, "l")
-            YIELD_TBL.signals[sig_sample.name] = UncFloat(integral, stat_err)
-
             self.signals.append(h)
     
-    def add_stack_data(self, plot, reg, YIELD_TBL, data):
+    def add_stack_data(self, plot, reg, data):
         if not data: return
         #TODO: Look for a way to combine with backgrounds
-        var_name = pu.strip_for_root_name(plot.variable)
-        hd_name = "h_"+reg.name+'_data_'+ var_name
-        self.data_hist = pu.th1d(hd_name, "", int(plot.nbins),
-                                  plot.xmin, plot.xmax,
-                                  plot.xlabel, plot.ylabel)
-        self.data_hist.Sumw2
-
-        cut = "(" + reg.tcut + ")"
-        cut = r.TCut(cut)
-        blind_factor = '!(100 < MCollASym && MCollASym < 150)' if data.blinded and reg.isSR else '1'
-        draw_cmd = "%s>>%s"%(plot.variable, self.data_hist.GetName())
+        if data.blinded and reg.isSR:
+            data.scale_factor = 0
+        self.data_hist = make_hist1D(plot, reg, data)
         
-
-        data.tree.Draw(draw_cmd, "(%s) * %s" % (cut, blind_factor), "goff")
         self.data_hist.GetXaxis().SetLabelOffset(-999)
-
-        # print the yield +/- stat error
-        stat_err = r.Double(0.0)
-        integral = self.data_hist.IntegralAndError(0,-1,stat_err)
-        YIELD_TBL.data[data.name] = UncFloat(integral, stat_err)
-
-        # Rebin
-        if plot.rebin_bins:
-            new_bins = array('d', plot.rebin_bins)
-            self.data_hist = self.data_hist.Rebin(len(new_bins)-1, hd_name, new_bins)
-
-        # Add overflow
-        if plot.add_overflow:
-            pu.add_overflow_to_lastbin(self.data_hist)
-        if plot.add_underflow:
-            pu.add_underflow_to_firstbin(self.data_hist)
 
         self.data = pu.convert_errors_to_poisson(self.data_hist)
         #self.data.SetLineWidth(2)
+        
         #uglify
         self.data.SetLineWidth(1)
         self.data.SetMarkerStyle(20)
@@ -1083,8 +1025,6 @@ def make_plot2D_axis(plot):
 
     xax = axis.GetXaxis()
     xax.SetTitle(plot.xlabel)
-    xax.SetTitleFont(42)
-    xax.SetLabelFont(42)
     xax.SetLabelSize(0.035)
     xax.SetTitleSize(0.048 * 0.85)
     xax.SetLabelOffset(1.15 * 0.02)
@@ -1095,8 +1035,6 @@ def make_plot2D_axis(plot):
 
     yax = axis.GetYaxis()
     yax.SetTitle(plot.ylabel)
-    yax.SetTitleFont(42)
-    yax.SetLabelFont(42)
     yax.SetTitleOffset(1.4)
     yax.SetLabelOffset(0.013)
     yax.SetLabelSize(1.2 * 0.035)
@@ -1104,8 +1042,6 @@ def make_plot2D_axis(plot):
 
     zax = axis.GetZaxis()
     zax.SetTitle(plot.zlabel)
-    #zax.SetTitleFont(42)
-    #zax.SetLabelFont(42)
     #zax.SetTitleOffset(1.4)
     #zax.SetLabelOffset(0.013)
     #zax.SetLabelSize(1.2 * 0.035)
@@ -1149,8 +1085,6 @@ def make_hist2D(plot, reg, samples):
 
     zax = hist.GetZaxis()
     zax.SetTitle(plot.zlabel)
-    zax.SetTitleFont(42)
-    zax.SetLabelFont(42)
     zax.SetTitleOffset(1.5)
     zax.SetLabelOffset(0.013)
     zax.SetLabelSize(1.2 * 0.035)
@@ -1159,22 +1093,21 @@ def make_hist2D(plot, reg, samples):
     
 
 class Hist2D(HistBase) :
-    def __init__(self, plot, reg, YIELD_TBL, samples):
+    def __init__(self, plot, reg, samples):
         #TODO: make simplest class take a single sample
         # and add derived class that takes lists of samples to add them
         # or write function that
-        # TODO: Remove YIELD_TBL
         self.axis = None
         self.hist = None
         if not samples: return
         self.axis = make_plot2D_axis(plot)
-        self.make_hist(plot, reg, YIELD_TBL, samples)
+        self.make_hist(plot, reg, samples)
 
     def list_of_root_objects(self):
         return [self.axis, self.hist]
 
 
-    def make_hist(self, plot, reg, YIELD_TBL, samples):
+    def make_hist(self, plot, reg, samples):
         self.hist = r.TH2D(plot.name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
         for sample in samples:
 
@@ -1187,29 +1120,18 @@ class Hist2D(HistBase) :
 
             if not sample.isMC:
                 weight_str = '1'
-            elif plot.xvariable != sample.weight_str and plot.yvariable != sample.weight_str:
-                weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
             else:
-                weight_str = '1'
+                weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
             draw_cmd = "%s>>%s"%(plot.yvariable+":"+plot.xvariable, h_tmp.GetName())
             sample.tree.Draw(draw_cmd, weight_str, "goff")
 
             # Yield +/- stat error
             stat_err = r.Double(0.0)
             integral = h_tmp.IntegralAndError(0,-1,0,-1,stat_err)
-            if sample.isMC and sample.isSignal:
-                YIELD_TBL.signals[sample.name] = UncFloat(integral, stat_err)
-            elif sample.isMC and not sample.isSignal:
-                YIELD_TBL.mc[sample.name] = UncFloat(integral, stat_err)
-            elif not sample.isMC:
-                YIELD_TBL.data[sample.name] = UncFloat(integral, stat_err)
-
             self.hist.Add(h_tmp)
 
         zax = self.hist.GetZaxis()
         zax.SetTitle(plot.zlabel)
-        zax.SetTitleFont(42)
-        zax.SetLabelFont(42)
         zax.SetTitleOffset(1.5)
         zax.SetLabelOffset(0.013)
         zax.SetLabelSize(1.2 * 0.035)
@@ -1222,6 +1144,8 @@ def make_basic_hist(plot, sample, reg, apply_cuts=False):
                 plot.xlabel, plot.ylabel)
 
     h.SetLineColor(sample.color)
+    if sample.isMC and sample.isSignal:
+        h.SetLineStyle(2)
     h.SetFillColor(0)
     h.Sumw2
 
