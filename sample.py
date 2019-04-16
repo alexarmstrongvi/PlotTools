@@ -68,13 +68,14 @@ class Sample :
         # Select out flat ntuples found in DSID list
         chosen_ntuples = []
         for dsid in dsid_list:
+            flag = True
             for fname in flat_ntuples:
                 if any(s not in fname for s in search_strs if s): continue
                 if any(s in fname for s in exclude_strs if s) : continue
                 if str(dsid) in fname :
                     chosen_ntuples.append(fname);
-                    break
-            else:
+                    flag = False
+            if flag:
                 print "WARNING :: Unable to find file for DSID =", dsid
         if not chosen_ntuples:
             print "WARNING :: No samples found for", self.name

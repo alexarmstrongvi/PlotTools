@@ -27,7 +27,7 @@ ROOT.SetAtlasStyle()
 
 eta_gt_1p45 = False
 eta_lt_1p45 = True
-njet_0 = False
+njet_0 = True
 njet_1 = False
 njet_ge2 = False
 
@@ -149,8 +149,9 @@ vars_to_plot = []
 if eta_lt_1p45 or eta_gt_1p45 or njet_0 or njet_1 or njet_ge2:
     vars_to_plot += ['l_pt[2]']
 else:
+    vars_to_plot += ['l_pt[2]']
     #vars_to_plot = ['fabs(l_eta[2]):l_pt[2]']
-    vars_to_plot = ['n_jets:fabs(l_eta[2]):l_pt[2]']
+    #vars_to_plot = ['n_jets:fabs(l_eta[2]):l_pt[2]']
 
 # Remove duplicate names
 vars_to_plot = list(set(vars_to_plot))

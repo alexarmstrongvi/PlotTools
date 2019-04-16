@@ -26,7 +26,6 @@ def main():
 
     for reg in REGIONS:
         print '\n', 20*'-', "Yields for %s region"%reg.displayname, 20*'-', '\n'
-
         yld_table = reg.yield_table if reg.yield_table else deepcopy(YLD_TABLE)
         ########################################################################
         print "Setting EventLists for %s"%reg.name,

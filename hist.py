@@ -392,8 +392,8 @@ def format_x_axis(hist):
     xax.SetTitleFont(42)
 
 class RatioHist1D(HistBase) :
-    ratio_ymax = 1.3
-    ratio_ymin = 0.7
+    ratio_ymax = 2.0
+    ratio_ymin = 0.0
 
     def __init__(self, plot, reg, num, den):
         self.ratio_label = 'Num / Den'
@@ -557,24 +557,20 @@ class DataMCRatioHist1D(RatioHist1D) :
         yax = h_sm.GetYaxis()
         yax.SetRangeUser(self.ratio_ymin, self.ratio_ymax)
         yax.SetTitle(self.ratio_label)
-        yax.SetTitleSize(0.14 * 0.83)
-        yax.SetLabelSize(0.13 * 0.81)
-        yax.SetLabelOffset(0.98 * 0.013 * 1.08)
-        yax.SetTitleOffset(0.45 * 1.2)
-        yax.SetLabelFont(42)
-        yax.SetTitleFont(42)
+        yax.SetTitleSize(0.09)
+        yax.SetTitleOffset(0.6)
+        yax.SetLabelSize(0.09)
+        yax.SetLabelOffset(0.012)
         yax.SetNdivisions(5)
 
         # xaxis
         xax = h_sm.GetXaxis()
-        xax.SetTitleSize(1.1 * 0.14)
-        xax.SetLabelSize(yax.GetLabelSize())
-        xax.SetLabelOffset(1.15*0.02)
-        xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
-        xax.SetLabelFont(42)
-        xax.SetTitleFont(42)
+        xax.SetTitleSize(0.12)
+        xax.SetTitleOffset(1)
+        xax.SetLabelSize(0.09)
+        xax.SetLabelOffset(0.02)
 
-        h_sm.SetTickLength(0.06)
+        #h_sm.SetTickLength(0.06)
 
         if plot.bin_labels and plot.ptype == Types.ratio:
             plot.set_bin_labels(h_sm)
@@ -617,8 +613,6 @@ class DataMCRatioHist1D(RatioHist1D) :
             index+=1
 
         # Format
-        #self.ratio.SetLineWidth(2)
-        #uglify
         self.ratio.SetLineWidth(1)
         self.ratio.SetMarkerStyle(20)
         self.ratio.SetMarkerSize(1.5)
@@ -636,12 +630,16 @@ def make_plot1D_axis(plot):
     hax.SetMaximum(plot.ymax)
     xax = hax.GetXaxis()
     xax.SetTitle(plot.xlabel)
+    xax.SetTitleSize(0.05)
+    xax.SetTitleOffset(1)
     if plot.ptype == Types.ratio:
         xax.SetTitleOffset(-999)
         xax.SetLabelOffset(-999)
 
     yax = hax.GetYaxis()
     yax.SetTitle(plot.ylabel)
+    yax.SetTitleOffset(1.7)
+    yax.SetTitleSize(0.035)
 
     if plot.bin_labels and plot.ptype == Types.stack:
         plot.set_bin_labels(hax)

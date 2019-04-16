@@ -780,7 +780,7 @@ def draw_text(x=0.7, y=0.65, font=42, color=ROOT.kBlack, text="", size=0.04, ang
 def draw_atlas_label(status, analysis, region, move_x = 0, move_y = 0, scale = 1):
     left_edge = 0.18 + move_x
     status_indent = (0.13) * scale
-    bottom_edge = (0.73 + move_y)
+    bottom_edge = (0.70 + move_y)
     vspacing = 0.05 * scale
     size = 0.04 * scale
 
@@ -790,10 +790,10 @@ def draw_atlas_label(status, analysis, region, move_x = 0, move_y = 0, scale = 1
         x=left_edge+status_indent, y=bottom_edge+3*vspacing, size=size+0.01, font=42)
     draw_text(text="#sqrt{s} = 13 TeV, 36.1 fb^{-1}",
         x=left_edge,               y=bottom_edge+2*vspacing, size=size)
-    draw_text(text=analysis,
-        x=left_edge,               y=bottom_edge+vspacing,   size=size)
-    draw_text(text=region,
-        x=left_edge,               y=bottom_edge,            size=size)
+    #draw_text(text=analysis,
+    #    x=left_edge,               y=bottom_edge+vspacing,   size=size)
+    #draw_text(text=region,
+    #    x=left_edge,               y=bottom_edge,            size=size)
 
 # ----------------------------------------------
 #  TLine Methods

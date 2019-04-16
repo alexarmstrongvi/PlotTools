@@ -46,9 +46,9 @@ fakes.color = color_palette['gray'][0]
 
 ################################################################################
 # Signal
-signal_branching_ratio = 0.01
+signal_branching_ratio = 0.02
 signal_SF = 1
-signal_suffix = " (%.f%% BR)" % (signal_branching_ratio * 100)
+signal_suffix = " (%d%% BR)" % (signal_branching_ratio * 100)
 if signal_SF != 1:
     signal_suffix += " X %.f" % signal_SF
 
@@ -106,7 +106,7 @@ VVV = Background("vvv", "VVV"); SAMPLES.append(VVV)
 VVV.color = color_palette['spring'][1] 
 
 # Z(->ll) + jets
-zll = Background("zll", "Z(->ll)+jets", "$Z(\\rightarrow\ell\ell)+$jets"); SAMPLES.append(zll)
+zll = Background("zll", "Z(#rightarrowll)+jets", "$Z(\\rightarrow\ell\ell)+$jets"); SAMPLES.append(zll)
 zll.color = color_palette['azure'][0] 
 
 zee = Background("zee", "Zee"); SAMPLES.append(zee)

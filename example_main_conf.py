@@ -25,13 +25,13 @@ ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ################################################################################
 import global_variables as g
 # Toggles
-run_fakes = True
+run_fakes = False
 add_truth_den = False
 add_truth_num = False
 run_den = False
-run_num = True
+run_num = False
 run_zjets = False
-run_base = True
+run_base = False
 
 assert run_den != run_num
 assert run_zjets != run_base
@@ -64,49 +64,46 @@ from example_sample_conf import *
 # To remove sample from plot, comment out the line setting its TChain
 # Samples with empty TChains get removed below
 
-#data.set_chain_from_dsid_list([309640], data_ntuple_dir)
-#data.set_chain_from_dsid_list(g.groups['data'], data_ntuple_dir)
-#top.set_chain_from_dsid_list(g.groups['top'], bkg_ntuple_dir)
-##ttbar.set_chain_from_dsid_list(g.groups['ttbar'], bkg_ntuple_dir)
-##stop.set_chain_from_dsid_list(g.groups['singletop'], bkg_ntuple_dir)
-##wtop.set_chain_from_dsid_list(g.groups['Wt'], bkg_ntuple_dir)
-#
-#ttbarX.set_chain_from_dsid_list(g.groups['ttbarX'], bkg_ntuple_dir)
-#
-#VV.set_chain_from_dsid_list(g.groups['VV'], bkg_ntuple_dir)
-#
-#VVV.set_chain_from_dsid_list(g.groups['VVV'], bkg_ntuple_dir)
-#
-#zll.set_chain_from_dsid_list(g.groups['zll'], bkg_ntuple_dir)
-##zee.set_chain_from_dsid_list(g.groups['zee'], bkg_ntuple_dir)
-#zee.set_chain_from_dsid_list([364119], '/data/uclhc/uci/user/armstro1/SusyNt/SusyNt_n0235_LFV_analysis/analysis_run/outputs/')
-##zmumu.set_chain_from_dsid_list(g.groups['zmumu'], bkg_ntuple_dir)
-#
-#ztt.set_chain_from_dsid_list(g.groups['ztt'], bkg_ntuple_dir)
-##ztt_sherpa.set_chain_from_dsid_list(g.groups['ztt_sherpa'], bkg_ntuple_dir)
-##ztt_lowMLL.set_chain_from_dsid_list(g.groups['ztt_lowMLL'], bkg_ntuple_dir)
-##ztt_2jets.set_chain_from_dsid_list(g.groups['ztt_2jets'], bkg_ntuple_dir)
-###ztt_l13l7.set_chain_from_dsid_list(g.groups['ztt_l13l7'], bkg_ntuple_dir)
-#
-##wjets.set_chain_from_dsid_list(g.groups['wjets'], bkg_ntuple_dir)
-#
-##wgamma.set_chain_from_dsid_list(g.groups['wgamma'], bkg_ntuple_dir)
-#
-#zgamma.set_chain_from_dsid_list(g.groups['zgamma'], bkg_ntuple_dir)
-#
-#higgs.set_chain_from_dsid_list(g.groups['higgs'], bkg_ntuple_dir)
-##HWW.set_chain_from_dsid_list(g.groups['HWW'], bkg_ntuple_dir)
-##HV.set_chain_from_dsid_list(g.groups['HV'], bkg_ntuple_dir)
-##ttH.set_chain_from_dsid_list(g.groups['ttH'], bkg_ntuple_dir)
-##Htautau.set_chain_from_dsid_list(g.groups['Htautau'], bkg_ntuple_dir)
-##ggF_Htt.set_chain_from_dsid_list(g.groups['ggF_Htt'], bkg_ntuple_dir)
-##VBF_Htt.set_chain_from_dsid_list(g.groups['VBF_Htt'], bkg_ntuple_dir)
-#
-#signal_taum.set_chain_from_dsid_list(g.groups['higgs_lfv_taum'], signal_ntuple_dir)
-#signal_taue.set_chain_from_dsid_list(g.groups['higgs_lfv_taue'], signal_ntuple_dir)
-signal_taue.set_chain_from_root_file('CENTRAL_345124_base_num.root', '/data/uclhc/uci/user/armstro1/SusyNt/SusyNt_n0235_LFV_analysis/analysis_run/CutflowCompare/')
-#if run_fakes:
-#    fakes.set_chain_from_dsid_list(g.groups['data'], fake_ntuple_dir)
+data.set_chain_from_dsid_list(g.groups['data'], data_ntuple_dir)
+top.set_chain_from_dsid_list(g.groups['top'], bkg_ntuple_dir)
+#ttbar.set_chain_from_dsid_list(g.groups['ttbar'], bkg_ntuple_dir)
+#stop.set_chain_from_dsid_list(g.groups['singletop'], bkg_ntuple_dir)
+#wtop.set_chain_from_dsid_list(g.groups['Wt'], bkg_ntuple_dir)
+
+ttbarX.set_chain_from_dsid_list(g.groups['ttbarX'], bkg_ntuple_dir)
+
+VV.set_chain_from_dsid_list(g.groups['VV'], bkg_ntuple_dir)
+
+VVV.set_chain_from_dsid_list(g.groups['VVV'], bkg_ntuple_dir)
+
+zll.set_chain_from_dsid_list(g.groups['zll'], bkg_ntuple_dir)
+#zee.set_chain_from_dsid_list(g.groups['zee'], bkg_ntuple_dir)
+#zmumu.set_chain_from_dsid_list(g.groups['zmumu'], bkg_ntuple_dir)
+
+ztt.set_chain_from_dsid_list(g.groups['ztt'], bkg_ntuple_dir)
+#ztt_sherpa.set_chain_from_dsid_list(g.groups['ztt_sherpa'], bkg_ntuple_dir)
+#ztt_lowMLL.set_chain_from_dsid_list(g.groups['ztt_lowMLL'], bkg_ntuple_dir)
+#ztt_2jets.set_chain_from_dsid_list(g.groups['ztt_2jets'], bkg_ntuple_dir)
+##ztt_l13l7.set_chain_from_dsid_list(g.groups['ztt_l13l7'], bkg_ntuple_dir)
+
+wjets.set_chain_from_dsid_list(g.groups['wjets'], bkg_ntuple_dir)
+
+wgamma.set_chain_from_dsid_list(g.groups['wgamma'], bkg_ntuple_dir)
+
+zgamma.set_chain_from_dsid_list(g.groups['zgamma'], bkg_ntuple_dir)
+
+higgs.set_chain_from_dsid_list(g.groups['higgs'], bkg_ntuple_dir)
+#HWW.set_chain_from_dsid_list(g.groups['HWW'], bkg_ntuple_dir)
+#HV.set_chain_from_dsid_list(g.groups['HV'], bkg_ntuple_dir)
+#ttH.set_chain_from_dsid_list(g.groups['ttH'], bkg_ntuple_dir)
+#Htautau.set_chain_from_dsid_list(g.groups['Htautau'], bkg_ntuple_dir)
+#ggF_Htt.set_chain_from_dsid_list(g.groups['ggF_Htt'], bkg_ntuple_dir)
+#VBF_Htt.set_chain_from_dsid_list(g.groups['VBF_Htt'], bkg_ntuple_dir)
+
+signal_taum.set_chain_from_dsid_list(g.groups['higgs_lfv_taum'], signal_ntuple_dir)
+signal_taue.set_chain_from_dsid_list(g.groups['higgs_lfv_taue'], signal_ntuple_dir)
+if run_fakes:
+    fakes.set_chain_from_dsid_list(g.groups['data'], fake_ntuple_dir)
 
 
 SAMPLES = [s for s in SAMPLES if s.is_setup()]
@@ -210,8 +207,8 @@ for num_den, id_aid in [("num","ID"),("den",'anti-ID')]:
 # Fake Factor validation region: Wjet
 wjets_FF_VR = preselection_sel
 wjets_FF_VR += '&& !(l_pt[0] >= 45 && DphiLep1MET < 1.0 && 30 < MLL && MLL < 150)' # orthgonal to SR
-wjets_FF_VR += ' && nBJets==0 && l_pt[1] >= 10 && ( !'+mue+' || el1pT_trackclus_ratio < 1.2) && 50 < l_mT[0] && l_mT[1] < 40' # similar to SR
-#wjets_FF_VR += ' && 30 < MLL' #TODO: To be added
+wjets_FF_VR += ' && nBJets==0 && l_pt[1] >= 10 && ( !('+mue+') || el1pT_trackclus_ratio < 1.2) && 50 < l_mT[0] && l_mT[1] < 40' # similar to SR
+wjets_FF_VR += ' && 30 < MLL' #TODO: To be added
 wjets_FF_VR += ' && (drll <= 2.5 || dpt_ll > 25)' # Orthogonal to Ztautau
 wjets_FF_VR += ' && 25 < RelMET && MET < 60' #Remove additional top+VV+Ztt
 
@@ -288,12 +285,13 @@ elif run_num:
         #region_ops += ['zjets_FF_CR_num_eee', 'zjets_FF_CR_num_mme']
     if run_base:
         #region_ops += ['wjets_FF_VR_num']
-        #region_ops += ['wjets_FF_VR_num_emu', 'wjets_FF_VR_num_mue']
+        region_ops += ['wjets_FF_VR_num_emu', 'wjets_FF_VR_num_mue']
         #region_ops += ['preselection_emu', 'preselection_mue']
-        #region_ops += ['baseline_emu', 'baseline_mue']
-        region_ops += ['ggh_SR_num']
+        #region_ops += ['baseline_mue']
+        #region_ops += ['ggh_SR_num']
         #region_ops += ['ggh_SR_num_emu'+truth_op, 'ggh_SR_num_mue'+truth_op] #TMP HACK
         #region_ops += ['preselection']
+        #region_ops += ['preselection_mue']
         #region_ops += ['baseline']
         #region_ops += ['ggh_SR']
         #region_ops += ['ztt_CR']
@@ -362,14 +360,11 @@ YIELD_TBL.formulas['Data/MC'] = "data/MC"
 from example_plot_conf import * #TODO: Dont use import *
 PlotBase.save_dir = g.plots_dir
 Plot1D.auto_set_ylimits = True
-Plot1D.doLogY = False
+Plot1D.doLogY = True
 Plot2D.doLogZ = False
 Plot2D.auto_set_zlimits = False
 
 vars_to_plot_all = []
-#vars_to_plot_all += ['ptll']
-#vars_to_plot_all += ['lep_d0sigBSCorr[0]','lep_z0SinTheta[0]','lep_d0sigBSCorr[1]','lep_z0SinTheta[1]']
-
 
 ################################################################################
 # Create plots
@@ -380,19 +375,9 @@ for region_name in region_ops:
     region = next(x for x in REGIONS if x.name == region_name)
     region.yield_table = deepcopy(YLD_TABLE)
     if "wjets" in region_name:
-        #vars_to_plot += ['el1pT_trackclus_ratio', 'taulep1_pT_ratio']
-        vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_eta[0]', 'l_eta[1]', 'MET', 'n_jets','MCollASym']
-        #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_eta[1]', 'MET', 'n_jets', 'l_truthClass[1]']
-        #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'MLL', 'nBJets', 'MET']
-        #vars_to_plot += ['RelMET', 'nLJets', 'drll', 'DphiLep0MET','DphiLep1MET', 'l_mT[0]', 'l_mT[1]']
-        #vars_to_plot += ['dpt_ll:drll','drll','dpt_ll']
-        #vars_to_plot += ['l_pt[0]:drll','l_pt[0]:DphiLep1MET','dpt_ll:drll','dpt_ll:DphiLep1MET']
-        #vars_to_plot += ['DphiLep1MET:drll',"DphiLep0MET:drll",'DphiLep1MET:l_mT[1]','DphiLep0MET:l_mT[0]']
-        #vars_to_plot += ['drll', 'DphiLep1MET',"DphiLep0MET",'l_mT[1]','l_mT[0]']
-        vars_to_plot += ['l_truthClass[1]']
-
-        #vars_to_plot += ['DphiLep0MET:MET', 'DphiLep1MET:MET', 'DphiLep0MET:RelMET', 'DphiLep1MET:RelMET']
-        #vars_to_plot += ['DphiLep0MET', 'DphiLep1MET', 'MET', 'RelMET']
+        #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_eta[0]', 'l_eta[1]', 'MLL', 'MET', 'n_jets','MCollASym']
+        #vars_to_plot += ['RelMET', 'nLJets', 'nBJets', 'drll', 'DphiLep0MET','DphiLep1MET', 'l_mT[0]', 'l_mT[1]']
+        vars_to_plot += ['l_pt[0]']
         
         region.yield_table.add_row_formula(name="top_mc_ratio", displayname="Top/MC", latexname="Top/MC", formula="top/MC")
         region.yield_table.add_row_formula(name="ztt_mc_ratio", displayname="Ztautau/MC", latexname="$Z\\rightarrow\\tau\\tau$/MC", formula="ztt/MC")
@@ -402,10 +387,10 @@ for region_name in region_ops:
     
     if "zjets" in region_name:
         #vars_to_plot += ['dR_Z_Fake:(ptll - l_pt[2])', 'ptll:(ptll - l_pt[2])', 'dR_Z_Fake:(ptll - l_pt[2])/ptll', '(ptll - l_pt[2])/ptll', '(ptll - l_pt[2] - MET)/ptll', 'lep_met_pT[2]', 'DphiLep2MET']
-        #vars_to_plot += ['l_pt[0]', 'l_pt[2]', 'l_eta[2]', 'MET', 'n_jets', 'l_truthClass[2]', 'lep_d0sigBSCorr[2]','lep_z0SinTheta[2]']
-        #vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'nBJets', 'nLJets']
+        #vars_to_plot += ['l_pt[0]','l_pt[1]', 'l_pt[2]', 'ptll', 'MET', 'MLL', 'l_eta[2]', 'l_mT[2]', 'nBJets', 'nLJets']
         #vars_to_plot += ['drl2l[0]','drl2l[1]','drll','DphiLep0MET','DphiLep1MET','DphiLep2MET']
-        vars_to_plot += ['l_truthClass[2]']
+        #vars_to_plot += ['dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
+        vars_to_plot += ['l_pt[0]']
         region.yield_table.add_row_formula(name="zjets_mc_ratio",displayname="Zll/MC", formula="zll/MC")
         region.yield_table.add_row_formula(name="vv_mc_ratio",displayname="VV/MC", formula="vv/MC")
 
@@ -429,11 +414,17 @@ for region_name in region_ops:
         region.yield_table.add_row_formula(name="norm_factor",displayname="norm factor", formula="(data-(MC-ztt))/ztt")
     
     if any(x in region_name for x in ['baseline','preselection','ggh_SR','ztt_CR','top_CR']):
-        vars_to_plot += ['l_truthClass[1]']
+        vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_eta[0]', 'l_eta[1]', 'MET', 'n_jets','MCollASym']
+        vars_to_plot += ['RelMET', 'nLJets', 'drll', 'DphiLep0MET','DphiLep1MET', 'l_mT[0]', 'l_mT[1]']
         #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_eta[0]', 'l_eta[1]', 'MET', 'n_jets','MCollASym']
         #vars_to_plot += ['taulep1_pT_ratio', 'DphiLep1MET', 'l_mT[0]', 'l_mT[1]']
         #vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'MLL', 'nBJets', 'el1pT_trackclus_ratio', 'MET']
         #vars_to_plot += ['RelMET', 'nLJets', 'drll', 'DphiLep0MET','DphiLep1MET', 'l_mT[0]', 'l_mT[1]', 'taulep1_pT_ratio']
+        region.yield_table.add_row_formula(name="top_mc_ratio", displayname="Top/MC", latexname="Top/MC", formula="top/MC")
+        region.yield_table.add_row_formula(name="ztt_mc_ratio", displayname="Ztautau/MC", latexname="$Z\\rightarrow\\tau\\tau$/MC", formula="ztt/MC")
+        region.yield_table.add_row_formula(name="vv_mc_ratio",displayname="VV/MC", formula="vv/MC")
+        if not run_fakes:
+            region.yield_table.add_row_formula(name="wjets_mc_ratio",displayname="W+Jets/MC", formula="wjets/MC")
     #if any(x in region_name for x in ['zjets','wzCR']):
     #    vars_to_plot += ['l_pt[0]', 'l_pt[1]', 'l_pt[2]', 'MLL', 'nLJets', 'MET']
     #    vars_to_plot += ['drll', 'DphiLep2MET', 'l_mT[2]', 'dR_ZLep0_Fake','dR_ZLep1_Fake','dR_Z_Fake']
