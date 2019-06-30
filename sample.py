@@ -44,6 +44,7 @@ class Sample :
         self.color = r.kRed
         self.tree = None
         self.isMC = None
+        self.cut = None
 
     # Setup TChain/TTree
     def set_chain_from_root_file(self, file_name, flat_ntuple_dir):
@@ -223,7 +224,10 @@ class Sample :
             self.tree.SetEventList(0)
 
         # Define useful variables
+        # TODO: Remove TCut conversion from string
         cut = str(cut)
+        if self.cut:
+            cut = "%s && %s" % (cut, self.cut)
         tcut  = r.TCut(cut)
         n_entries = str(self.tree.GetEntries())
         identifiers = [cut, save_dir, self.file_path, str(n_entries), list_name]
@@ -322,8 +326,7 @@ class Sample :
         their yields in a given region defined by tcut
         '''
         cut = r.TCut(tcut)
-        sel = r.TCut("1")
-        return ( self.tree.Draw("isMC", cut * sel, "goff") > other.tree.Draw("isMC", cut * sel, "goff") )
+        return ( self.tree.Draw("isMC", cut, "goff") > other.tree.Draw("isMC", cut, "goff") )
 
     # Sanity checks
     def is_setup(self):
@@ -349,17 +352,25 @@ class Sample :
 # Data class
 ################################################################################
 class Data(Sample):
-    def __init__(self, name = 'data', displayname='Data') :
-        Sample.__init__(self, name, displayname)
+    def __init__(self, name = 'data', displayname='Data', latexname='Data') :
+        Sample.__init__(self, name, displayname, latexname)
         self.weight_str = '1'
         self.scale_factor = '1'
         self.color = r.kBlack
         self.isMC = False
+        self.isDataBkg = False
         self.blinded = True
 
     def Print(self) :
         print 'Data (tree %s)'%(self.name)
 
+class DataBackground(Data) :
+    def __init__(self, name = "", displayname = "", latexname="") :
+        Data.__init__(self, name, displayname)
+        self.isDataBkg = True
+
+    def Print(self) :
+        print 'Data background "%s" (tree %s)'%(self.displayname, self.name)
 ################################################################################
 # MC classes
 ################################################################################
@@ -378,13 +389,13 @@ class MCsample(Sample):
     def Print(self) :
         print 'MC Sample "%s" (tree %s)'%(self.displayname, self.name)
 
-class Background(MCsample) :
+class MCBackground(MCsample) :
     def __init__(self, name = "", displayname = "", latexname="") :
         MCsample.__init__(self, name, displayname, latexname)
         self.isSignal = False
 
     def Print(self) :
-        print 'Background "%s" (tree %s)'%(self.displayname, self.name)
+        print 'MC Background "%s" (tree %s)'%(self.displayname, self.name)
 
 class Signal(MCsample) :
     def __init__(self, name = "", displayname ="", latexname="") :

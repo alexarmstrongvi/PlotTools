@@ -1,3 +1,9 @@
+################################################################################
+# Classes for making all ROOT objects needed for painting plots 
+# such as TH1, TLegend, TGraph, etc..
+#
+# These get passed to the Plot classes to be turned into pretty plots
+################################################################################
 import re
 from array import array
 
@@ -60,8 +66,105 @@ class HistBase:
 #TODO: Remover unused classes
 
 class StackHist1D(HistBase):
-    def __init__(self):
-        pass
+    def __init__(self, plot, reg, samples) : 
+
+        self.leg                    = r.TLegend()
+        self.axis                   = self.make_plot1D_axis(plot)
+        self.stack_hists            = make_stack_hists(plot, reg, samples)
+        self.stack_hist             = make_stack_hist(self.stack_hists)
+        self.total_hist             = make_stack_total_hist(self.mc_stack)
+        self.total_error_graph      = make_error_graph(self.total_hist)
+        self.total_error_dummy_hist = make_dummy_hist_for_legend("mcError") 
+       
+        if self.successful_setup() and plot.doNorm:
+            self.normalize_hists(plot)
+
+    def list_of_root_objects(self):
+        return [
+            self.leg,
+            self.axis,
+            self.stack_hists,
+            self.stack_hist,
+            self.total_hist,
+            self.total_error_graph,
+            self.total_error_dummy_hist,
+    ]
+
+    def successful_setup(self):
+        return bool(self.stack_hists)
+
+    def make_plot1D_axis(self, plot, name='axis'):
+        return r.TH1F(name, "", plot.nbins, plot.bin_edges)
+
+    def normalize_hists(self):
+        norm_factor = 1.0/self.total_hist.Integral()
+        pu.scale_thstack(self.stack_hist, norm_factor)
+        self.mc_total.Scale(norm_factor)
+        pu.scale_tgraph(self.total_error_graph, norm_factor)
+
+def make_stack_hists(plot, reg, samples, sort=True):
+    stack_hists = []
+    for sample in samples:
+        # Initilize histogram
+        h = make_hist1D(plot, reg, sample)
+        
+        # Basic formatting
+        h.SetFillColor(sample.color)
+        h.SetFillStyle(1001)
+        h.leg_name = sample.displayname
+
+        if h.Integral() > 0:
+            stack_hists.append(h)
+
+    if not len(stack_hists):
+        print "ERROR :: All hists are empty. Unable to make stack hist"
+        return
+
+    if sort:
+        stack_hists = sorted(stack_hists, key=lambda h: h.Integral())
+
+    return stack_hists
+
+def make_stack_hist(stack_hists, name="h_stack"):
+    h_stack = r.THStack(name)
+    for h in stack_hists:
+        h_stack.Add(h)
+    return h_stack
+
+def make_stack_total_hist(stack_hist, name="h_stack_total"):
+    try:
+        return stack_hist.GetStack().Last().Clone(name)
+    except ReferenceError:
+        print "ERROR :: Unable to access stack to get total"
+        return
+
+def make_error_graph(hist, symmetrize_errors=True):
+    if not hist:
+        print "ERROR :: Unable to make error graph from empty hists"
+        return
+
+    error_graph = pu.th1_to_tgraph(hist)
+
+    if symmetrize_errors:
+        for i in xrange(error_graph.GetN()) :
+            ehigh = error_graph.GetErrorYhigh(i)
+            elow  = error_graph.GetErrorYlow(i)
+
+            error_sym = r.Double(0.0)
+            error_sym = (ehigh + elow) / 2.0
+
+            if ehigh != error_sym:
+                print "INFO :: initial error (+%.2f,-%.2f), symmetrized = (+%.2f,-%.2f)"%(ehigh,elow, error_sym, error_sym)
+                error_graph.SetPointEYhigh(i,0.0)
+                error_graph.SetPointEYhigh(i, error_sym)
+                error_graph.SetPointEYlow(i,0.0)
+                error_graph.SetPointEYlow(i,error_sym)
+
+    return error_graph
+
+def make_dummy_hist_for_legend(name):
+    return r.TH1F(name,"",1,0,1)
+
 
 class CutScan1D(HistBase):
     def __init__(self, plot, reg, signals, backgrounds, xcut_is_max=True):
@@ -174,18 +277,27 @@ class CutScan1D(HistBase):
         bkgd_cm = GetCumulative1D(bkgd, xcut_is_max) 
 
         zn_sig = signal_cm.Clone(signal.GetName() + "_zn_sig")
-        last_bin = zn_sig.GetNbinsX()
-        num = 0.1*(signal_cm.GetBinContent(last_bin)/bkgd_cm.GetBinContent(last_bin) - 1)
-        den = bkgd_cm.GetBinError(last_bin)/bkgd_cm.GetBinContent(last_bin)
-        dummy_scale = num/den 
+        if signal.Integral() > bkgd.Integral():
+            last_bin = zn_sig.GetNbinsX()
+            error = r.Double(0.0)
+            bkgd.IntegralAndError(0,-1, error)
+            num = 0.1*(signal.Integral()/bkgd.Integral() - 1)
+            den = error/bkgd.Integral()
+            dummy_scale = num/den 
+            zn_sig.GetYaxis().SetTitle("Zn Sig. (scaled)")
+        else:
+            dummy_scale = 1
+            zn_sig.GetYaxis().SetTitle("Zn Sig.")
         for xbin in range(1, zn_sig.GetNbinsX()+1):
             sig_yld = signal_cm.GetBinContent(xbin)
             bkd_yld = bkgd_cm.GetBinContent(xbin)
             bkd_unc = bkgd_cm.GetBinError(xbin)/bkd_yld if bkd_yld else 1
             bkd_unc *= dummy_scale
             zn = ncu.BinomialExpZ(sig_yld, bkd_yld, bkd_unc)
+            if zn == float('inf'):
+                zn = 0
             zn_sig.SetBinContent(xbin, zn)
-        zn_sig.GetYaxis().SetTitle("Zn Sig. (scaled)")
+            print "TESTING :: sig_yld = %f, bkd_yld = %f, bkd_unc = %f, Zn = %f" % (sig_yld, bkd_yld, bkd_unc, zn)
         maxy = zn_sig.GetMaximum()
         maxy = maxy + 0.2*abs(maxy)
         miny = zn_sig.GetMaximum()
@@ -525,7 +637,7 @@ def reformat_axis(plot, axis, hists):
     if plot.doLogY:
         maxy = 10**(pu.get_order_of_mag(maxy))
         if miny > 0:
-            miny = 10**(pu.get_order_of_mag(miny))
+            miny = 10**(pu.get_order_of_mag(miny)-1)
         else:
             miny = 10**(pu.get_order_of_mag(maxy) - 4)
     else:
@@ -559,11 +671,12 @@ def make_hist1D(plot, reg, samples, samples_name=""):
 
     var_name = pu.strip_for_root_name(plot.variable)
     h_name = "h_"+reg.name+'_'+samples_name+"_"+ var_name
+    #TODO Is setting the label here redundant since it probably is set later?
     h_label = ";%s;%s" % (plot.xlabel, plot.ylabel)
     h = r.TH1D(h_name,h_label, plot.nbins, plot.bin_edges)
     h.SetLineColor(samples[0].color)
     h.Sumw2
-        
+
     draw_cmd = "%s>>+%s"%(plot.variable, h.GetName())
     
     for sample in samples:
@@ -571,7 +684,8 @@ def make_hist1D(plot, reg, samples, samples_name=""):
         if samples[0].weight_str:
             weight_str = "%s * %s"%(sample.weight_str, str(sample.scale_factor))
         else:
-            weight_str = 1
+            weight_str = "1"
+
         sample.tree.Draw(draw_cmd, weight_str, "goff")
 
     # Rebin
@@ -586,7 +700,6 @@ def make_hist1D(plot, reg, samples, samples_name=""):
         pu.add_underflow_to_firstbin(h)
 
     return h
-
 
 class DataMCRatioHist1D(RatioHist1D) :
     def __init__(self, plot, reg, stack_hist):
@@ -758,14 +871,14 @@ class DataMCStackHist1D(HistBase):
         self.mc_errors = None
         self.histos_for_leg = []
 
-        self.make_stack_legend(plot, reg)
+        self.make_stack_legend(plot)
         self.axis = make_plot1D_axis(plot)
         self.add_stack_backgrounds(plot, reg, bkgds)
         if sigs: self.add_stack_signals(plot, reg, sigs)
         self.add_stack_data(plot, reg, data)
         self.add_stack_mc_errors(plot, reg)
         if plot.doNorm:
-            self.normalize_stack(plot, reg)
+            self.normalize_hists()
         if plot.auto_set_ylimits:
             self.reformat_axis(plot)
 
@@ -782,7 +895,7 @@ class DataMCStackHist1D(HistBase):
             self.mc_errors
         ]
 
-    def make_stack_legend(self, plot, reg):
+    def make_stack_legend(self, plot):
         if plot.leg_is_left :
             self.leg = pu.default_legend(xl=0.2,yl=0.7,xh=0.47, yh=0.87)
         elif plot.leg_is_bottom_right :
@@ -801,36 +914,29 @@ class DataMCStackHist1D(HistBase):
 
         # Initilize lists and defaults
         histos = []
-        all_histos = []
-        avoid_bkg = []
-        hists_to_clear = []
 
-        # Make MC sample hists
-        for mc_sample in bkgds :
+        # Make sample hists
+        for sample in bkgds :
             # Initilize histogram
-            h = make_hist1D(plot, reg, mc_sample)
-            
-            hists_to_clear.append(h.GetName())
+            h = make_hist1D(plot, reg, sample)
 
             h.GetXaxis().SetLabelOffset(-999)
 
-            if mc_sample.isSignal:
+            if sample.isMC and sample.isSignal:
                 h.SetLineWidth(2)
                 h.SetLineStyle(2)
                 h.SetFillStyle(0)
             else:
-                h.SetFillColor(mc_sample.color)
+                h.SetFillColor(sample.color)
                 h.SetFillStyle(1001)
-            h.Sumw2
 
-            h.leg_name = mc_sample.displayname #dynamic class members...ooo yeah!
+            h.leg_name = sample.displayname #dynamic class members...ooo yeah!
 
             # Record all and non-empty histograms
-            if mc_sample.isSignal:
-                leg_sig.AddEntry(h, mc_sample.displayname, "l")
-            else:
-                all_histos.append(h)
-                histos.append(h) if h.Integral() > 0 else avoid_bkg.append(mc_sample.name)
+            if sample.isMC and sample.isSignal:
+                leg_sig.AddEntry(h, sample.displayname, "l")
+            elif h.Integral() > 0:
+                histos.append(h) 
         if not len(histos):
             print "ERROR (make_stack_background) :: All SM hists are empty. Skipping"
             return
@@ -842,7 +948,7 @@ class DataMCStackHist1D(HistBase):
         for h in histos :
             self.mc_stack.Add(h)
 
-        h_leg = sorted(all_histos, key=lambda h: h.Integral(), reverse=True)
+        h_leg = sorted(histos, key=lambda h: h.Integral(), reverse=True)
         self.histos_for_leg = self.arrange_histos_for_legend(h_leg)
 
         # draw the total bkg line
@@ -936,7 +1042,7 @@ class DataMCStackHist1D(HistBase):
             self.mc_errors.SetPointEYlow(i,error_sym)
         return
 
-    def normalize_stack(self, plot, reg):
+    def normalize_hists(self):
         if self.mc_total and self.mc_total.Integral():
             mc_norm_factor = 1.0/self.mc_total.Integral()
             pu.scale_thstack(self.mc_stack, mc_norm_factor)
@@ -968,7 +1074,7 @@ class DataMCStackHist1D(HistBase):
         if plot.doLogY:
             maxy = 10**(pu.get_order_of_mag(maxy))
             if miny > 0:
-                miny = 10**(pu.get_order_of_mag(miny))
+                miny = 10**(pu.get_order_of_mag(miny)-1)
             else:
                 miny = 10**(pu.get_order_of_mag(maxy) - 4)
         else:
@@ -1013,23 +1119,24 @@ class DataMCStackHist1D(HistBase):
 
         return [histos[idx] for idx in indices]
 
-
-
 class ComparisonHist1D :
     def __init__(self):
         pass
 
+################################################################################
+# 2D Plots
+################################################################################
 def make_plot2D_axis(plot):
-    axis = r.TH2D("axes", "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
-    axis.SetMinimum(plot.zmin)
-    axis.SetMaximum(plot.zmax)
+    axis = r.TH2D("axes", "", plot.nxbins, plot.xbin_edges, plot.nybins, plot.ybin_edges)
+    #axis.SetMinimum(plot.zmin)
+    #axis.SetMaximum(plot.zmax)
 
     xax = axis.GetXaxis()
     xax.SetTitle(plot.xlabel)
     xax.SetLabelSize(0.035)
-    xax.SetTitleSize(0.048 * 0.85)
-    xax.SetLabelOffset(1.15 * 0.02)
-    xax.SetTitleOffset(1.5 * xax.GetTitleOffset())
+    xax.SetTitleSize(0.041)
+    xax.SetLabelOffset(0.023)
+    xax.SetTitleOffset(2.1)
 
     #if plot.bin_labels:
     #    plot.set_bin_labels(axis)
@@ -1038,8 +1145,8 @@ def make_plot2D_axis(plot):
     yax.SetTitle(plot.ylabel)
     yax.SetTitleOffset(1.4)
     yax.SetLabelOffset(0.013)
-    yax.SetLabelSize(1.2 * 0.035)
-    yax.SetTitleSize(0.055 * 0.85)
+    yax.SetLabelSize(0.042)
+    yax.SetTitleSize(0.47)
 
     zax = axis.GetZaxis()
     zax.SetTitle(plot.zlabel)
@@ -1091,7 +1198,6 @@ def make_hist2D(plot, reg, samples):
     zax.SetLabelSize(1.2 * 0.035)
 
     return hist
-    
 
 class Hist2D(HistBase) :
     def __init__(self, plot, reg, samples):
@@ -1109,13 +1215,13 @@ class Hist2D(HistBase) :
 
 
     def make_hist(self, plot, reg, samples):
-        self.hist = r.TH2D(plot.name, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
+        self.hist = r.TH2D(plot.name, "", plot.nxbins, plot.xbin_edges, plot.nybins, plot.ybin_edges)
         for sample in samples:
 
             x_var = pu.strip_for_root_name(plot.xvariable)
             y_var = pu.strip_for_root_name(plot.yvariable)
             h_name_tmp = "h_"+reg.name+'_'+sample.name+"_"+x_var+"_"+y_var
-            h_tmp = r.TH2D(h_name_tmp, "", plot.nxbins, plot.xmin, plot.xmax, plot.nybins, plot.ymin, plot.ymax)
+            h_tmp = r.TH2D(plot.name, "", plot.nxbins, plot.xbin_edges, plot.nybins, plot.ybin_edges)
             # Draw final histogram (i.e. selections and weights applied)
 
 

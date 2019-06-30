@@ -81,9 +81,6 @@ class UncFloat :
                 unc_dn = abs((value) - (other / dn))
                 uncertainty = max(unc_up, unc_dn)
             return UncFloat(value, uncertainty)
-        elif isinstance(other, UncFloat):
-            print "TESTING:", other
-            return self.__div__(other)
         else:
             raise TypeError, "Undefined division of UncFloat by %s " % str(type(other))
     def __div__(self, other):
@@ -102,8 +99,8 @@ class UncFloat :
                 # Add relative error in quadrature
                 # Solve for relative uncertainty to avoid problem from nominal = 0 in numerator
                 # This would lead to undefined relative error (e.g. uncX/X = uncX/0 = undefined)
-                x1 = self.value / other.value
-                x2 = other.uncertainty / other.value**2
+                x1 = self.uncertainty * (1.0 / other.value)
+                x2 = other.uncertainty * (-self.value / other.value**2)
                 uncertainty = sqrt(x1**2 + x2**2)
         return UncFloat(value, uncertainty)
     def __lt__(self, other) :

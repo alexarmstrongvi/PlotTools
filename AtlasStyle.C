@@ -1,1 +1,0 @@
-/home/alarmstr/LexTools/atlasrootstyle/AtlasStyle.C

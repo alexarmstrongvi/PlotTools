@@ -151,7 +151,7 @@ class Plot1D(PlotBase) :
         self.rebin_bins = []
 
     def update(self,
-        #TODO: Split this into several update functions
+        #TODO: Change to using kwargs
         region = None,
         variable = None,
         name = None,
@@ -377,7 +377,6 @@ class Plot1D(PlotBase) :
     def draw_data_mc_stack_plot(self, reg_name, hists):
         ''' In a separate function so it can be used when making stack + ratio plots '''
         # Draw the histograms
-        hists.axis
         hists.axis.Draw()
         hists.mc_stack.Draw("HIST SAME")
         hists.mc_errors.Draw("E2 same")
@@ -593,6 +592,127 @@ class Plot1D(PlotBase) :
         # Save the histogram
         self.save_plot(pads.canvas, suffix="cutScan")
 
+    def make_stack_plot(self, reg_name, hists, suffix=''):
+        if not hists.successful_setup():
+            print "WARNING :: Stack plots failed to setup properly. Skipping."
+            return
+
+        ######################################################################## 
+        # Format axis
+        h_axis = self.axis
+        h_axis.SetMinimum(self.ymin)
+        h_axis.SetMaximum(self.ymax)
+
+        xax = h_axis.GetXaxis()
+        xax.SetTitle(self.xlabel)
+        xax.SetTitleSize(0.05)
+        xax.SetTitleOffset(1)
+        if self.ptype == Types.ratio:
+            xax.SetTitleOffset(-999)
+            xax.SetLabelOffset(-999)
+
+        yax = h_axis.GetYaxis()
+        yax.SetTitle(self.ylabel)
+        yax.SetTitleOffset(1.7)
+        yax.SetTitleSize(0.035)
+
+        if self.bin_labels:
+            self.set_bin_labels(h_axis)
+        
+        ######################################################################## 
+        # Format stack
+
+        ######################################################################## 
+        # Format stack total hist
+        hists.total_hist.SetLineColor(r.kBlack)
+        hists.total_hist.SetLineWidth(3)
+        hists.total_hist.SetLineStyle(1)
+        hists.total_hist.SetFillStyle(0)
+        hists.total_hist.SetLineWidth(3)
+        
+        ######################################################################## 
+        # Format error graph
+        #self.total_error_graph  = make_error_graph(self.mc_total)
+        r.gStyle.SetHatchesSpacing(0.9) #TODO : Set in style file or somewhere globally
+        hists.total_error_dummy_hist.SetLineWidth(3)
+        hists.total_error_dummy_hist.SetFillStyle(3345)
+        hists.total_error_dummy_hist.SetFillColor(r.kBlue)
+        hists.total_error_dummy_hist.SetLineColor(r.kBlack)
+        hists.leg.AddEntry(self.total_error_dummy_hist, "Standard Model", "fl")
+
+        ######################################################################## 
+        # Reformat stack and axis if requested
+        if self.auto_set_ylimits:
+            # Get maximum histogram y-value
+            maxy = hists.stack_hist.GetMaximum()
+            miny = hists.stack_hist.GetMinimum()
+            if maxy <= 0:
+                print "WARNING :: Max value of plot is <= 0"
+                return
+
+            # Get default y-axis max and min limits
+            if self.doLogY:
+                maxy = 10**(pu.get_order_of_mag(maxy))
+                if miny > 0:
+                    miny = 10**(pu.get_order_of_mag(miny))
+                else:
+                    miny = 10**(pu.get_order_of_mag(maxy) - 4)
+            else:
+                maxy = maxy
+                miny = 0
+
+            # Get y-axis max multiplier to fit labels
+            if self.doLogY:
+                max_mult = 1e6 if self.signals else 1e5
+            else:
+                max_mult = 2.0 if self.signals else 1.8
+
+            # reformat the axis
+            hists.mc_stack.SetMaximum(max_mult*maxy)
+            hists.mc_stack.SetMinimum(miny)
+            hists.axis.SetMaximum(max_mult*maxy)
+            hists.axis.SetMinimum(miny)
+        
+        ######################################################################## 
+        # Format legend
+        hists.leg.SetNColumns(2)
+        hists.leg.AddEntry(hists.total_error_dummy_hist, "Standard Model", "fl")
+        for h in hists.stack_hists:
+            hists.leg.AddEntry(h, h.leg_name, "f")
+
+        if self.leg_is_left :
+            xl, yl, xh, yh = 0.2, 0.7, 0.47, 0.87
+        elif self.leg_is_bottom_right :
+            xl, yl, xh, yh = 0.7,  0.17, 0.97, 0.41
+        elif self.leg_is_bottom_left :
+            xl, yl, xh, yh = 0.2, 0.2, 0.47, 0.37
+        else :
+            xl, yl, xh, yh = 0.55, 0.71, 0.93, 0.90
+        hists.leg.SetX1(xl)
+        hists.leg.SetY1(yl)
+        hists.leg.SetX2(xh)
+        hists.leg.SetY2(yh)
+
+        ######################################################################## 
+        # Paint and save plot
+        self.setStackPads(self.name)
+        can = self.pads.canvas
+        can.cd()
+        if self.doLogY : can.SetLogy(True)
+
+        hists.axis.Draw()
+        hists.stack_hist.Draw("HIST SAME")
+        hists.total_error_graph.Draw("E2 SAME")
+        hists.stack_total_hist.Draw("HIST SAME")
+        hists.leg.Draw()
+        pu.draw_atlas_label(self.atlas_status, self.atlas_lumi, reg_name)
+
+        can.RedrawAxis()
+        can.SetTickx()
+        can.SetTicky()
+        can.Update()
+        
+        self.save_plot(can, suffix)
 
     def Print(self) :
         print "Plot1D    plot: %s  (region: %s  var: %s)"%(
@@ -683,11 +803,33 @@ class Plot2D(PlotBase) :
         self.rebin_xbins = []
         self.rebin_ybins = []
 
-    def update(self, region, xvar, yvar):
-        self.region = region
-        self.xvariable = xvar
-        self.yvariable = yvar
-        self.name = determine_name(region, xvar, yvar)
+    def update(self,
+               region = None, 
+               xvar = None, 
+               yvar = None, 
+               xbin_edges=None,
+               ybin_edges=None):
+        if region: self.region = region
+        if xvar: self.xvariable = xvar
+        if yvar: self.yvariable = yvar
+        self.name = determine_name(self.region, self.xvariable, self.yvariable)
+        
+        if xbin_edges: self.xbin_edges = xbin_edges
+        if ybin_edges: self.ybin_edges = ybin_edges
+        if xbin_edges or ybin_edges:
+            bin_range = [self.xbin_edges[0], self.xbin_edges[-1], 
+                         self.ybin_edges[0], self.ybin_edges[-1]]
+
+            bin_ranges = self.determine_range(bin_range)
+            self.xmin, self.xmax = bin_ranges[0:2]
+            self.ymin, self.ymax = bin_ranges[2:4]
+            self.zmin, self.zmax = bin_ranges[4:6]
+
+            nxbins = len(self.xbin_edges) - 1
+            nybins = len(self.ybin_edges) - 1
+
+            self.nxbins, self.xbin_edges = determine_bins(self.xbin_edges, None, nxbins, self.xmin, self.xmax, self.xvariable)
+            self.nybins, self.ybin_edges = determine_bins(self.ybin_edges, None, nybins, self.ymin, self.ymax, self.yvariable)
 
 
     def xbin_width(self):
@@ -803,7 +945,10 @@ class Plot2D(PlotBase) :
             pu.normalize_plot(hists.hist)
         if self.auto_set_zlimits:
             reformat_zaxis(hists.hist, self.doLogZ)
-        hists.axis.Draw()
+
+        hists.axis.SetMaximum(hists.hist.GetMaximum())
+        hists.axis.SetMinimum(hists.hist.GetMinimum())
+        hists.axis.Draw("AXIS")
         hists.hist.Draw("%s SAME" % self.style)
 
         can.RedrawAxis()
@@ -1056,16 +1201,10 @@ def reformat_zaxis(hist, doLogZ):
     assert maxz > 0
 
     # Get default z-axis max and min limits
-    if doLogZ:
-        maxz = 10**(pu.get_order_of_mag(maxz))
-        if minz > 0:
-            minz = 10**(pu.get_order_of_mag(minz))
-        else:
-            minz = 10**(pu.get_order_of_mag(maxz) - 7)
-    else:
+    if doLogZ and minz < 0:
+        minz = 10**(pu.get_order_of_mag(maxz) - 7)
+    elif not doLogZ:
         minz = 0
-
-    # Get z-axis max multiplier to fit labels
 
     # reformat the axis
     hist.SetMaximum(maxz)

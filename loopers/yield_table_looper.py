@@ -2,7 +2,7 @@
 import sys, os, traceback, argparse
 import time
 import importlib
-from YieldTable import YieldTbl, UncFloat
+from PlotTools.YieldTable import YieldTbl, UncFloat
 from math import sqrt
 from copy import deepcopy
 
@@ -30,7 +30,7 @@ def main():
         print "Setting EventLists for %s"%reg.name,
         print "(+%d comparison regions)"%len(reg.compare_regions) if len(reg.compare_regions) else ""
         for sample in SAMPLES :
-            if sample.isMC:
+            if sample.isMC or sample.isDataBkg:
                 weight_var = sample.weight_str
             elif not sample.isMC and sample.blinded and reg.isSR:
                 weight_var = "0"
@@ -49,8 +49,7 @@ def main():
                 col_name = reg.name
                 display_name = reg.displayname
                 latex_name = reg.latexname
-            col_name = "Incl. Yld" if len(reg.compare_regions) else reg.name
-            print "TESTING : Col name " , col_name
+            #col_name = "Incl. Yld" if len(reg.compare_regions) else reg.name
             yld_table.add_entry(row_name = sample.name,
                                 col_name = col_name,
                                 val = yld,
@@ -59,7 +58,7 @@ def main():
                                 row_latexname = sample.latexname, 
                                 col_displayname = display_name,
                                 col_latexname = latex_name,
-                                mc = sample.isMC,
+                                mc = sample.isMC or sample.isDataBkg,
                                 signal = sample.isSignal if sample.isMC else False
                                 ) 
             for cf_reg in reg.compare_regions:
@@ -79,7 +78,7 @@ def main():
                                     row_latexname = sample.latexname, 
                                     col_displayname = cf_displayname,
                                     col_latexname = cf_latexname,
-                                    mc = sample.isMC,
+                                    mc = sample.isMC or sample.isDataBkg,
                                     signal = sample.isSignal if sample.isMC else False
                                     ) 
 
