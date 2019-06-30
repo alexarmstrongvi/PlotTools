@@ -1,11 +1,20 @@
 if [ "$BASH_SOURCE" == "$(basename "$BASH_SOURCE")" ]; then
-    # sourcing file in atlasrootstyle
-
-    full_path="$(dirname "$(pwd -P)")"
+    # sourcing file from parent directory
+    full_path="$(pwd -P)/$BASH_SOURCE"
 else
-    # sourcing file from outside atlasrootstyle
-    gparent_dir="$(dirname "$(dirname "$BASH_SOURCE")")"
-    full_path="$(cd $gparent_dir && pwd -P)"
+    # sourcing file from outside parent directory
+    full_path="$(cd "$(dirname "$BASH_SOURCE")" && pwd -P)/$(basename "$BASH_SOURCE")"
 fi
-export PYTHONPATH="$PYTHONPATH:${full_path}"
-echo "$full_path added to PYTHONPATH. Now you can run \"from PlotTools import ...\""
+
+parent_dir="$(dirname "$full_path")"
+gparent_dir="$(dirname "$parent_dir")"
+ggparent_dir="$(dirname "$gparent_dir")"
+
+#echo "full_path = $full_path"
+#echo "parent_dir = $parent_dir"
+#echo "gparent_dir = $gparent_dir"
+#echo "ggparent_dir = $ggparent_dir"
+dir_to_add="$ggparent_dir"
+
+export PYTHONPATH="$PYTHONPATH:${dir_to_add}"
+echo "$dir_to_add added to PYTHONPATH. Now you can run \"from PlotTools import ...\""
