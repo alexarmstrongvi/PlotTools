@@ -330,7 +330,6 @@ class Sample :
 
     # Sanity checks
     def is_setup(self):
-        #return self.tree and self.tree.GetEntries() and self.isMC != None
         return self.tree and self.tree.GetEntries() and self.isMC != None
 
     def check_for_duplicates(self, ifile):

@@ -424,10 +424,9 @@ class YieldTbl:
         return keyword
 
     def extract_elements_from_formula(self, formula):
-        elements = re.sub("(\+|\-|\)|\(|\*|\.|[0-9]|\/)"," ", formula)
+        elements = re.sub("(\+|\-|\)|\(|\*|\.|\/)"," ", formula) # remove all math expressions
+        elements = re.sub("( [0-9]$|^[0-9] | [0-9] )"," ", elements) # remove constants leftover
         elements = [c.strip() for c in elements.split()]
-        assert all(s.replace("_","").isalpha() for s in elements), (
-            "ERROR :: Unacceptable formula format %s -> %s" % (formula, elements))
         return elements
 
     def apply_column_formula(self, formula, labels):
