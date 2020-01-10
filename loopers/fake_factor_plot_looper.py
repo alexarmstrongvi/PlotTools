@@ -5,6 +5,14 @@ Make fake factor files and plots
 Examples
     make_fake_factor_plots.py -c config_file.conf
 
+Description:
+    Required inputs from config file
+        - SAMPLES: two sets of sample objects with either "den" and "num" in the name
+        - REGIONS: event selections to apply with truth selections defined
+        - PLOTS: plots to make from samples
+        - YIELD_TBL: default yield table
+        - DEN_STR/NUM_STR: 
+
 Author:
     Alex Armstrong <alarmstr@cern.ch>
 Licence:
@@ -42,7 +50,6 @@ r.THStack.__init__._creates = False
 # Local classes for plotting
 import PlotTools.plot_utils as pu
 from PlotTools.YieldTable import UncFloat
-from global_variables import event_list_dir, plots_dir, yield_tbl_dir
 from PlotTools.hist import make_plot1D_axis
 
 @contextmanager
@@ -114,7 +121,8 @@ class KeyManager(object) :
     ############################################################################
     def generate_hist_key(self, sample, region, cut):
         sample_name = remove_num_den(sample.name)
-        if region.truth_fake_sel in cut and "+" in cut:
+        num_or_den = get_fake_channel(region.name)
+        if region.truth_fake_sel in cut and get_comp_sys_weight(num_or_den) in cut:
             key = self.fake_mc_sys_scale_str + "_" + sample_name
             self.mc_truth_fake_sys_stack_hists[sample_name] = key
         elif region.truth_fake_sel in cut:
@@ -198,6 +206,47 @@ class KeyManager(object) :
         self.fake_factor_keys[hist_key] = key
         return key
 
+    def generate_FakeBkgTools_key(self, channel_str, sample_str, var_str, syst_str=""):
+        if "_el" in channel_str:
+            flav = "_el"
+        elif "_mu" in channel_str:
+            flav = "_mu"
+        else:
+            print "ERROR :: Unable to identify lepton flavor in channel string:", channel_str
+        
+        if "data_bkgd_subtracted" in sample_str:
+            prefix = ""
+        elif "data" in sample_str:
+            prefix = "DataNoCorr_"
+        else:
+            prefix = "MC_"
+
+        print "TESTING :: var_str = ", var_str
+        if "probeLepPt" in var_str and "probeLepClusEtaBE" in var_str and "lepIsTrigMatched[probeLepIdx[0]]" in var_str:
+            # In deriving the fake factor we use events where the probe lepton is trigger matched
+            # but in the VR and SR we apply the fake factor to events where an anti-ID event 
+            var = "_pt_eta_trigMatchedToInvLep"
+            dim = "3D"
+        elif "probeLepPt" in var_str and "probeLepClusEtaBE" in var_str:
+            var = "_pt_eta"
+            dim = "2D"
+        elif "probeLepPt" in var_str:
+            var = "_pt"
+            dim = ""
+        elif "probeLepClusEtaBE" in var_str:
+            var = "_eta"
+            dim = ""
+        else:
+            print "ERROR :: Unable to identify lepton variable(s) in variable string:", var_str
+
+        if not syst_str:
+            syst = ""
+        else:
+            print "ERROR :: Unable to identify systematic in syst string:", syst_str
+
+
+        print "TESTING :: Fake factor hist name: %sFakeFactor%s%s%s%s" % (prefix, dim, flav, var, syst)
+        return "%sFakeFactor%s%s%s%s" % (prefix, dim, flav, var, syst)
     ############################################################################
     def get_data_keys(self):
         keys = [self.data_hist, self.data_corr_hist, self.data_comp_sys_hist, self.data_prompt_sys_up_hist, self.data_prompt_sys_dn_hist]
@@ -275,7 +324,7 @@ def main ():
     global args
 
     # Create hist container
-    # Organization : dict["chnanel"]["sample"]["num/den"] = TH1D
+    # Organization : dict["channel"]["sample"]["num/den"] = TH1D
     hists = defaultdict(lambda: defaultdict(lambda: defaultdict(r.TH1D)))
     for reg in REGIONS:
         # Get plots for this region
@@ -285,10 +334,11 @@ def main ():
 
         ########################################################################
         print "Setting EventLists for %s"%reg.name
-        cut = r.TCut(reg.tcut)
-        for sample in SAMPLES :
+        num_or_den = get_fake_channel(reg.name)
+        samples = [s for s in SAMPLES if num_or_den in s.name]
+        for sample in samples:
             list_name = "list_" + reg.name + "_" + sample.name
-            sample.set_event_list(cut, list_name, event_list_dir)
+            sample.set_event_list(reg.tcut, list_name, EVENT_LIST_DIR)
 
         ########################################################################
         # Make hists
@@ -314,7 +364,7 @@ def main ():
 
         suffix = "_" + args.suffix if args.suffix else ""
         name = channel_name + "_FFbins" + suffix + ".tex"
-        save_path = os.path.join(yield_tbl_dir, name)
+        save_path = os.path.join(YIELD_TBL_DIR, name)
         with open(save_path, 'w') as ofile:
             print "Saving FF table to", save_path
             ofile.write(pu.print_hist(ff_hist, tablefmt='latex'))
@@ -404,8 +454,8 @@ def add_ff_hist_primitives(plot, hists, reg):
             cuts.append("(%s) * %s"%(reg.tcut, weight))
             cuts.append("(%s && %s) * %s"%(reg.tcut, reg.truth_fake_sel, weight))
             cuts.append("(%s && %s) * %s"%(reg.tcut, reg.truth_bkg_sel, weight))
-            if args.systematics:
-                cuts.append("(%s && %s) * %s * (%s)"%(reg.tcut, reg.truth_fake_sel, weight, get_comp_sys_weight(num_or_den)))
+            #if args.systematics:
+            #    cuts.append("(%s && %s) * %s * (%s)"%(reg.tcut, reg.truth_fake_sel, weight, get_comp_sys_weight(num_or_den)))
         else: # Data
             cuts.append("(" + reg.tcut + ")")
 
@@ -536,11 +586,11 @@ def format_and_combine_hists(hists):
 
             # Rescale composition scaled MC hists to have same yield as unscaled
             # - this forces the composition systematic to effect the shape but no the yield
-            if args.systematics:
-                norm_factor = mc_truth_fake_hist.Integral(0,-1) / mc_truth_fake_sys_hist.Integral(0,-1)
-                #norm_factor = 1
-                mc_truth_fake_sys_hist.Scale(norm_factor)
-                pu.scale_thstack(mc_truth_fake_sys_stack, norm_factor)
+            #if args.systematics:
+            #    norm_factor = mc_truth_fake_hist.Integral(0,-1) / mc_truth_fake_sys_hist.Integral(0,-1)
+            #    #norm_factor = 1
+            #    mc_truth_fake_sys_hist.Scale(norm_factor)
+            #    pu.scale_thstack(mc_truth_fake_sys_stack, norm_factor)
 
             # Create and store background-subtracted data histogram
             data_corrected_name = "%s_%s"%(data_corr_hist_key, num_or_den)
@@ -553,54 +603,54 @@ def format_and_combine_hists(hists):
                     channel_name, num_or_den, data_corr_hist_key)
 
             # Create and store composition adjusted data histograms
-            if args.systematics:
-                data_comp_sys_key = KEYS.generate_data_comp_sys_key()
-                data_comp_sys_name = "%s_%s" % (data_comp_sys_key, num_or_den)
-                data_comp_sys_hist = data_corrected_hist.Clone(data_comp_sys_name)
-                comp_sys_scale_factor = mc_truth_fake_sys_hist.Clone()
-                #comp_sys_scale_factor.Divide(mc_truth_fake_hist)
-                #data_comp_sys_hist.Multiply(comp_sys_scale_factor)
-                comp_sys_scale_factor.Add(mc_truth_fake_hist, -1)
-                data_comp_sys_hist.Add(comp_sys_scale_factor)
-                data_comp_sys_hist.displayname = "Data (composition systematic)"
-                data_comp_sys_hist.plot = data_corrected_hist.plot
-                sample_dict[data_comp_sys_key] = data_comp_sys_hist
-                print "Data composition systematic  histogram (Channel: %s [%s]): %s created"%(
-                        channel_name, num_or_den, data_comp_sys_key)
+            #if args.systematics:
+            #    data_comp_sys_key = KEYS.generate_data_comp_sys_key()
+            #    data_comp_sys_name = "%s_%s" % (data_comp_sys_key, num_or_den)
+            #    data_comp_sys_hist = data_corrected_hist.Clone(data_comp_sys_name)
+            #    comp_sys_scale_factor = mc_truth_fake_sys_hist.Clone()
+            #    #comp_sys_scale_factor.Divide(mc_truth_fake_hist)
+            #    #data_comp_sys_hist.Multiply(comp_sys_scale_factor)
+            #    comp_sys_scale_factor.Add(mc_truth_fake_hist, -1)
+            #    data_comp_sys_hist.Add(comp_sys_scale_factor)
+            #    data_comp_sys_hist.displayname = "Data (composition systematic)"
+            #    data_comp_sys_hist.plot = data_corrected_hist.plot
+            #    sample_dict[data_comp_sys_key] = data_comp_sys_hist
+            #    print "Data composition systematic  histogram (Channel: %s [%s]): %s created"%(
+            #            channel_name, num_or_den, data_comp_sys_key)
 
-                # Create and store prompt background adjusted up data histograms
-                mc_prompt_sys_up_key = KEYS.generate_prompt_sys_up_key(KEYS.mc_truth_bkg_hist)
-                mc_prompt_sys_up_name = "%s_%s" % (mc_prompt_sys_up_key, num_or_den)
-                mc_bkgd_sys_up_hist = mc_background_hist.Clone(mc_prompt_sys_up_name)
-                pu.shift_hist_by_unc(mc_bkgd_sys_up_hist, up=True)
-                data_prompt_sys_up_key = KEYS.generate_prompt_sys_up_key(KEYS.data_hist)
-                data_prompt_sys_up_name = "%s_%s" % (data_prompt_sys_up_key, num_or_den)
-                data_prompt_sys_up_hist = data_hist.Clone(data_prompt_sys_up_name)
-                data_prompt_sys_up_hist.Add(mc_bkgd_sys_up_hist, -1)
+            #    # Create and store prompt background adjusted up data histograms
+            #    mc_prompt_sys_up_key = KEYS.generate_prompt_sys_up_key(KEYS.mc_truth_bkg_hist)
+            #    mc_prompt_sys_up_name = "%s_%s" % (mc_prompt_sys_up_key, num_or_den)
+            #    mc_bkgd_sys_up_hist = mc_background_hist.Clone(mc_prompt_sys_up_name)
+            #    pu.shift_hist_by_unc(mc_bkgd_sys_up_hist, up=True)
+            #    data_prompt_sys_up_key = KEYS.generate_prompt_sys_up_key(KEYS.data_hist)
+            #    data_prompt_sys_up_name = "%s_%s" % (data_prompt_sys_up_key, num_or_den)
+            #    data_prompt_sys_up_hist = data_hist.Clone(data_prompt_sys_up_name)
+            #    data_prompt_sys_up_hist.Add(mc_bkgd_sys_up_hist, -1)
 
-                mc_bkgd_sys_up_hist.displayname = "MC real background [SYS_UP]"
-                mc_bkgd_sys_up_hist.plot = mc_background_hist.plot
-                sample_dict[mc_prompt_sys_up_key] = mc_bkgd_sys_up_hist
-                data_prompt_sys_up_hist.displayname = "Data (bkgd subtracted [SYS_UP])"
-                data_prompt_sys_up_hist.plot = data_hist.plot
-                sample_dict[data_prompt_sys_up_key] = data_prompt_sys_up_hist
-                
-                # Create and store prompt background adjusted up data histograms
-                mc_prompt_sys_dn_key = KEYS.generate_prompt_sys_dn_key(KEYS.mc_truth_bkg_hist)
-                mc_prompt_sys_dn_name = "%s_%s" % (mc_prompt_sys_dn_key, num_or_den)
-                mc_bkgd_sys_dn_hist = mc_background_hist.Clone(mc_prompt_sys_dn_name)
-                pu.shift_hist_by_unc(mc_bkgd_sys_dn_hist, up=False)
-                data_prompt_sys_dn_key = KEYS.generate_prompt_sys_dn_key(KEYS.data_hist)
-                data_prompt_sys_dn_name = "%s_%s" % (data_prompt_sys_dn_key, num_or_den)
-                data_prompt_sys_dn_hist = data_hist.Clone(data_prompt_sys_dn_name)
-                data_prompt_sys_dn_hist.Add(mc_bkgd_sys_dn_hist, -1)
+            #    mc_bkgd_sys_up_hist.displayname = "MC real background [SYS_UP]"
+            #    mc_bkgd_sys_up_hist.plot = mc_background_hist.plot
+            #    sample_dict[mc_prompt_sys_up_key] = mc_bkgd_sys_up_hist
+            #    data_prompt_sys_up_hist.displayname = "Data (bkgd subtracted [SYS_UP])"
+            #    data_prompt_sys_up_hist.plot = data_hist.plot
+            #    sample_dict[data_prompt_sys_up_key] = data_prompt_sys_up_hist
+            #    
+            #    # Create and store prompt background adjusted up data histograms
+            #    mc_prompt_sys_dn_key = KEYS.generate_prompt_sys_dn_key(KEYS.mc_truth_bkg_hist)
+            #    mc_prompt_sys_dn_name = "%s_%s" % (mc_prompt_sys_dn_key, num_or_den)
+            #    mc_bkgd_sys_dn_hist = mc_background_hist.Clone(mc_prompt_sys_dn_name)
+            #    pu.shift_hist_by_unc(mc_bkgd_sys_dn_hist, up=False)
+            #    data_prompt_sys_dn_key = KEYS.generate_prompt_sys_dn_key(KEYS.data_hist)
+            #    data_prompt_sys_dn_name = "%s_%s" % (data_prompt_sys_dn_key, num_or_den)
+            #    data_prompt_sys_dn_hist = data_hist.Clone(data_prompt_sys_dn_name)
+            #    data_prompt_sys_dn_hist.Add(mc_bkgd_sys_dn_hist, -1)
 
-                mc_bkgd_sys_dn_hist.displayname = "MC real background [SYS_DN]"
-                mc_bkgd_sys_dn_hist.plot = mc_background_hist.plot
-                sample_dict[mc_prompt_sys_dn_key] = mc_bkgd_sys_dn_hist
-                data_prompt_sys_dn_hist.displayname = "Data (bkgd subtracted [SYS_DN])"
-                data_prompt_sys_dn_hist.plot = data_hist.plot
-                sample_dict[data_prompt_sys_dn_key] = data_prompt_sys_dn_hist
+            #    mc_bkgd_sys_dn_hist.displayname = "MC real background [SYS_DN]"
+            #    mc_bkgd_sys_dn_hist.plot = mc_background_hist.plot
+            #    sample_dict[mc_prompt_sys_dn_key] = mc_bkgd_sys_dn_hist
+            #    data_prompt_sys_dn_hist.displayname = "Data (bkgd subtracted [SYS_DN])"
+            #    data_prompt_sys_dn_hist.plot = data_hist.plot
+            #    sample_dict[data_prompt_sys_dn_key] = data_prompt_sys_dn_hist
 
 
 def get_fake_factor_hists(hists):
@@ -608,15 +658,22 @@ def get_fake_factor_hists(hists):
     for channel_name, ch_dict in hists.iteritems():
         for hist_key in KEYS.get_fake_factor_input_keys():
             fake_factor_key = KEYS.generate_fake_factor_key(hist_key)
-            fake_factor_name = channel_name + "_" + fake_factor_key
             num_hist = ch_dict[conf.NUM_STR][hist_key]
-            ff_hist = num_hist.Clone(fake_factor_name)
+            #fake_factor_name = channel_name + "_" + fake_factor_key
+            if isinstance(num_hist, r.TH3):
+                var_str = num_hist.plot.xvariable + "_" + num_hist.plot.yvariable + "_" + num_hist.plot.zvariable
+            elif isinstance(num_hist, r.TH2):
+                var_str = num_hist.plot.xvariable + "_" + num_hist.plot.yvariable
+            elif isinstance(num_hist, r.TH1):
+                var_str = num_hist.plot.variable
+            ff_name = KEYS.generate_FakeBkgTools_key(channel_name, hist_key, var_str)
+            ff_hist = num_hist.Clone(ff_name)
             ff_hist.Divide(ch_dict[conf.DEN_STR][hist_key])
-            ff_hist.SetMaximum(1)
+            ff_hist.SetMaximum(0.5)
 
             # Append some information   
             ff_hist.displayname = hist_key.replace("_"," ")
-            ff_hist.plot = num_hist.plot
+            #ff_hist.plot = num_hist.plot
             ff_hist.plot = copy(num_hist.plot)
 
             # Format the hists
@@ -629,6 +686,8 @@ def get_fake_factor_hists(hists):
 
 def save_and_write_hists(ff_hists_dict, hists):
     # Writing fake factor hists to root file
+    if args.ofile_name:
+         ofile = r.TFile(args.ofile_name,"RECREATE")
     for channel_name, ff_hists in ff_hists_dict.iteritems():
         ff_hist = ff_hists[KEYS.data_corr_fake_factor]
         if args.systematics:
@@ -639,60 +698,109 @@ def save_and_write_hists(ff_hists_dict, hists):
             nbins = ff_hist.GetNbinsX()+2
             if ff_hist.plot.is2D:
                 nbins *= ff_hist.GetNbinsY()+2
-            if ff_hist.plot.is3D:
+            elif ff_hist.plot.is3D:
                 nbins *= ff_hist.GetNbinsY()+2
                 nbins *= ff_hist.GetNbinsZ()+2
             
             # Non closure systematics
-            ff_nonclosure_unc = ff_hist.Clone(ff_hist.GetName() + "_nonclosure_Syst")
-            ff_nonclosure_unc.Reset()
-            for ibin in range(0, nbins+1):
-                ff_nonclosure_unc.SetBinContent(ibin, conf.NONCLOSURE_SYS)
+            ff_nonclosure_unc_up = ff_hist.Clone(ff_hist.GetName() + "__nonclosure_Syst_UP")
+            ff_nonclosure_unc_up.Reset()
+            ff_nonclosure_unc_dn = ff_hist.Clone(ff_hist.GetName() + "__nonclosure_Syst_DN")
+            ff_nonclosure_unc_dn.Reset()
+            def get_nonclosure_err_up(nom_value):
+                return nom_value * conf.NONCLOSURE_SYS
+            def get_nonclosure_err_dn(nom_value):
+                return nom_value * -conf.NONCLOSURE_SYS
 
             # Composition systematics
-            ff_composition_unc = ff_hists[KEYS.data_comp_sys_fake_factor]
-            mc_comp_sys_ff_hist = ff_hists[KEYS.mc_comp_sys_fake_factor] 
-            mc_ff_hist = ff_hists[KEYS.mc_fake_factor]
+            ff_composition_unc = ff_hist.Clone(ff_hist.GetName() + "__composition_Syst")
+            ff_composition_unc.Reset()
+            #mc_comp_sys_ff_hist = ff_hists[KEYS.mc_comp_sys_fake_factor] 
+            #mc_ff_hist = ff_hists[KEYS.mc_fake_factor]
+            #def get_composition_syst_err(ibin, nom_value):
+            #    mc_ff_val = mc_ff_hist.GetBinContent(ibin)
+            #    mc_comp_sys_ff_val = mc_comp_sys_ff_hist.GetBinContent(ibin)
+            #    mc_comp_sys_rel_err = abs(mc_ff_val - mc_comp_sys_ff_val) / mc_ff_val if mc_ff_val else 0
+            #    return nom_value * mc_comp_sys_rel_err
 
             # Background subtraction systematics
-            ff_bkgd_subtraction_unc_up = ff_hists[KEYS.data_prompt_sys_up_fake_factor]
-            ff_bkgd_subtraction_unc_dn = ff_hists[KEYS.data_prompt_sys_dn_fake_factor]
+            ff_prompt_subtraction_unc_up = ff_hist.Clone(ff_hist.GetName() + "__prompt_Syst_UP")
+            ff_prompt_subtraction_unc_up.Reset()
+            ff_prompt_subtraction_unc_dn = ff_hist.Clone(ff_hist.GetName() + "__prompt_Syst_DN")
+            ff_prompt_subtraction_unc_dn.Reset()
+            #ff_prompt_subtraction_up = ff_hists[KEYS.data_prompt_sys_up_fake_factor]
+            #def get_prompt_subtraction_err_up(ibin, nom_value):
+            #    return ff_prompt_subtraction_up.GetBinContent(ibin) - nom_value
+            #ff_prompt_subtraction_dn = ff_hists[KEYS.data_prompt_sys_dn_fake_factor]
+            #def get_prompt_subtraction_err_dn(ibin, nom_value):
+            #    return ff_prompt_subtraction_dn.GetBinContent(ibin) - nom_value
 
             # Combine systematics
-            ff_sys_unc = ff_hist.Clone(ff_hist.GetName() + "_Syst") 
-            ff_sys_unc.Reset()
+            ff_sys_unc_up = ff_hist.Clone(ff_hist.GetName() + "__comb_Syst_UP") 
+            ff_sys_unc_up.Reset()
+            ff_sys_unc_dn = ff_hist.Clone(ff_hist.GetName() + "__comb_Syst_DN") 
+            ff_sys_unc_dn.Reset()
+
+            # Calculate absolute systematic uncertainty
             for ibin in range(0, nbins):
-                value = ff_hist.GetBinContent(ibin)
-               
-                stat_err = ff_hist.GetBinError(ibin)
+                nom_value = ff_hist.GetBinContent(ibin)
                 
-                #comp_err = abs(value - ff_composition_unc.GetBinContent(ibin))
-                mc_ff_val = mc_ff_hist.GetBinContent(ibin)
-                mc_comp_sys_ff_val = mc_comp_sys_ff_hist.GetBinContent(ibin)
-                mc_comp_sys_rel_err = abs(mc_ff_val - mc_comp_sys_ff_val) / mc_ff_val if mc_ff_val else 0
-                comp_err = value * mc_comp_sys_rel_err
+                # Non closure systematics
+                nonclo_err_up  = get_nonclosure_err_up(nom_value)
+                nonclo_err_dn  = get_nonclosure_err_dn(nom_value)
+                nonclo_err_up, nonclo_err_dn = correct_up_and_dn_err(nonclo_err_up, nonclo_err_dn)
+                ff_nonclosure_unc_up.SetBinContent(ibin, nonclo_err_up)
+                ff_nonclosure_unc_dn.SetBinContent(ibin, nonclo_err_dn)
+
+                # Composition systematics
+                comp_err = 0 #get_composition_syst_err(ibin, nom_value)
+                comp_err_up, comp_err_dn = (comp_err, 0) if comp_err >= 0 else (0, comp_err)
+                ff_composition_unc.SetBinContent(ibin, comp_err)
+
+                # Background subtraction systematics
+                prompt_err_up = 0 #get_prompt_subtraction_err_up(ibin, nom_value)
+                prompt_err_dn = 0 #get_prompt_subtraction_err_dn(ibin, nom_value)
+                prompt_err_up, prompt_err_dn = correct_up_and_dn_err(prompt_err_up, prompt_err_dn)
+                ff_prompt_subtraction_unc_up.SetBinContent(ibin, prompt_err_up)
+                ff_prompt_subtraction_unc_dn.SetBinContent(ibin, prompt_err_dn)
+
                 
-                subtraction_err_up = abs(value - ff_bkgd_subtraction_unc_up.GetBinContent(ibin))
-                subtraction_err_dn = abs(value - ff_bkgd_subtraction_unc_dn.GetBinContent(ibin))
-                
-                nonclo_err  = value * ff_nonclosure_unc.GetBinContent(ibin)
-                
-                ff_syst_err = sqrt(stat_err**2 + comp_err**2 + nonclo_err**2 + subtraction_err_up**2 + subtraction_err_dn**2)
-                print "INFO :: Sys Error = sum_quad(stat, comp, nonclo, prompt) = sum_quad(%.2f, %.2f, %.2f, %.2f, %.2f) = %.3f" % (stat_err, comp_err, nonclo_err, subtraction_err_up, subtraction_err_dn, ff_syst_err)
-                ff_sys_unc.SetBinContent(ibin, ff_syst_err)
-                ff_hist.SetBinError(ibin, ff_syst_err)
+                # Combine errors
+
+                ff_syst_err_up = sqrt(comp_err_up**2 + nonclo_err_up**2 + prompt_err_up**2)
+                #print "INFO :: Sys Error UP = sum_quad(comp, nonclo, prompt) = ",
+                #print "sum_quad(%.2f, %.2f, %.2f) = %.3f" % (comp_err_up, nonclo_err_up, prompt_err_up, ff_syst_err_up)
+                ff_syst_err_dn = -sqrt(comp_err_dn**2 + nonclo_err_dn**2 + prompt_err_up**2)
+                #print "INFO :: Sys Error DN = -sum_quad(comp, nonclo, prompt) = ",
+                #print "sum_quad(%.2f, %.2f, %.2f) = %.3f" % (comp_err_dn, nonclo_err_dn, prompt_err_dn, ff_syst_err_dn)
+
+                ff_sys_unc_up.SetBinContent(ibin, ff_syst_err_up)
+                ff_sys_unc_dn.SetBinContent(ibin, ff_syst_err_dn)
 
             if args.ofile_name:
-                with open_root(args.ofile_name,"RECREATE") as ofile:
-                    ff_hist.Write()
-                    ff_sys_unc.Write()
+                ff_hist.Write()
+                ff_nonclosure_unc_up.Write()
+                ff_nonclosure_unc_dn.Write()
+                ff_composition_unc.Write()
+                ff_prompt_subtraction_unc_up.Write()
+                ff_prompt_subtraction_unc_dn.Write()
+                ff_sys_unc_up.Write()
+                ff_sys_unc_dn.Write()
                     
-            ff_nonclosure_unc.Delete()
-            ff_sys_unc.Delete()
+            ff_nonclosure_unc_up.Delete()
+            ff_nonclosure_unc_dn.Delete()
+            ff_composition_unc.Delete()
+            ff_prompt_subtraction_unc_up.Delete()
+            ff_prompt_subtraction_unc_dn.Delete()
+            ff_sys_unc_up.Delete()
+            ff_sys_unc_dn.Delete()
+        elif args.ofile_name:
+            ff_hist.Write()
+
 
         # Only try to paint 1D histograms
         if ff_hist.plot.is2D or ff_hist.plot.is3D:
-            return
+            continue
 
         # Saving plots of fake factor hists
         data_corr_ff_hist = ff_hists[KEYS.data_corr_fake_factor]
@@ -713,33 +821,37 @@ def save_and_write_hists(ff_hists_dict, hists):
         hists_to_plot = [mc_ff_hist, data_corr_ff_hist]
         plot = data_corr_ff_hist.plot
         plot.ylabel = "Fake Factor"
-        reg_name = "Z+jets (Mu)" if channel_name.endswith('m') else "Z+jets (El)"
+        reg_name = "Z+jets (Mu)" if channel_name.endswith('mu') else "Z+jets (El)"
         save_hist(plot_title, plot, reg_name, hists_to_plot)
 
-        if args.systematics:
-            ff_composition_data_unc = ff_hists[KEYS.data_comp_sys_fake_factor] 
-            ff_composition_data_unc.displayname = "Composition Sys (Data Shift)"
-            ff_composition_data_unc.color = r.kYellow
-            mc_comp_sys_ff_hist = ff_hists[KEYS.mc_comp_sys_fake_factor] 
-            mc_comp_sys_ff_hist.displayname = "Composition Sys (MC Shift)"
-            mc_comp_sys_ff_hist.color = r.kSpring
-            ff_bkgd_subtraction_unc_up = ff_hists[KEYS.data_prompt_sys_up_fake_factor]
-            ff_bkgd_subtraction_unc_up.displayname = "Background Subtraction SYS_UP"
-            ff_bkgd_subtraction_unc_up.color = r.kGreen+2
-            ff_bkgd_subtraction_unc_dn = ff_hists[KEYS.data_prompt_sys_dn_fake_factor]
-            ff_bkgd_subtraction_unc_dn.displayname = "Background Subtraction SYS_DN"
-            ff_bkgd_subtraction_unc_dn.color = r.kGreen+1
-            plot_title = "Fake Factor Systematic Variation" 
-            #hists_to_plot = [ff_composition_data_unc, data_corr_ff_hist, ff_bkgd_subtraction_unc_up, ff_bkgd_subtraction_unc_dn]
-            #hists_to_plot = [mc_ff_hist, mc_comp_sys_ff_hist, data_corr_ff_hist, ff_bkgd_subtraction_unc_up, ff_bkgd_subtraction_unc_dn]
-            hists_to_plot = [mc_ff_hist, mc_comp_sys_ff_hist, ff_composition_data_unc, data_corr_ff_hist]
-            save_hist(plot_title, plot, reg_name, hists_to_plot)
+        #if args.systematics:
+        #    ff_composition_data_unc = ff_hists[KEYS.data_comp_sys_fake_factor] 
+        #    ff_composition_data_unc.displayname = "Composition Sys (Data Shift)"
+        #    ff_composition_data_unc.color = r.kYellow
+        #    mc_comp_sys_ff_hist = ff_hists[KEYS.mc_comp_sys_fake_factor] 
+        #    mc_comp_sys_ff_hist.displayname = "Composition Sys (MC Shift)"
+        #    mc_comp_sys_ff_hist.color = r.kSpring
+        #    ff_prompt_subtraction_unc_up = ff_hists[KEYS.data_prompt_sys_up_fake_factor]
+        #    ff_prompt_subtraction_unc_up.displayname = "Background Subtraction SYS_UP"
+        #    ff_prompt_subtraction_unc_up.color = r.kGreen+2
+        #    ff_prompt_subtraction_unc_dn = ff_hists[KEYS.data_prompt_sys_dn_fake_factor]
+        #    ff_prompt_subtraction_unc_dn.displayname = "Background Subtraction SYS_DN"
+        #    ff_prompt_subtraction_unc_dn.color = r.kGreen+1
+        #    plot_title = "Fake Factor Systematic Variation" 
+        #    #hists_to_plot = [ff_composition_data_unc, data_corr_ff_hist, ff_bkgd_subtraction_unc_up, ff_bkgd_subtraction_unc_dn]
+        #    #hists_to_plot = [mc_ff_hist, mc_comp_sys_ff_hist, data_corr_ff_hist, ff_bkgd_subtraction_unc_up, ff_bkgd_subtraction_unc_dn]
+        #    hists_to_plot = [mc_ff_hist, mc_comp_sys_ff_hist, ff_composition_data_unc, data_corr_ff_hist]
+        #    save_hist(plot_title, plot, reg_name, hists_to_plot)
 
+    if args.ofile_name:
+        ofile.Close()
 
     # Save all other desired plots
     for channel_name, ch_dict in hists.iteritems():
         for num_or_den, sample_dict in ch_dict.iteritems():
             # Save MC Stacks
+            if any(hasattr(h,"plot") and (h.plot.is2D or h.plot.is3D) for h in sample_dict.values()):
+                continue
             data_hist = sample_dict[KEYS.data_hist]
             mc_stack = sample_dict[KEYS.mc_stack]
             mc_hist = sample_dict[KEYS.mc_hist]
@@ -771,16 +883,16 @@ def save_and_write_hists(ff_hists_dict, hists):
             plot = mc_truth_fake_stack.plot
             save_hist(plot_title, plot, channel_name, hists_to_plot)
 
-            if args.systematics:
-                mc_truth_fake_stack = sample_dict[KEYS.mc_truth_fake_sys_stack]
-                mc_truth_fake_sys_hist = sample_dict[KEYS.mc_truth_fake_sys_hist]
-                data_hist.color = r.kBlack
-                mc_truth_fake_sys_hist.color = r.kBlack
-                plot_title = 'Scaled MC Backgrounds with anti-ID truth-matched fake lepton'
-                plot_title += ' (%s)'%num_or_den
-                hists_to_plot = [mc_truth_fake_stack, mc_truth_fake_sys_hist, data_hist]
-                plot = mc_truth_fake_stack.plot
-                save_hist(plot_title, plot, channel_name, hists_to_plot)
+            #if args.systematics:
+            #    mc_truth_fake_stack = sample_dict[KEYS.mc_truth_fake_sys_stack]
+            #    mc_truth_fake_sys_hist = sample_dict[KEYS.mc_truth_fake_sys_hist]
+            #    data_hist.color = r.kBlack
+            #    mc_truth_fake_sys_hist.color = r.kBlack
+            #    plot_title = 'Scaled MC Backgrounds with anti-ID truth-matched fake lepton'
+            #    plot_title += ' (%s)'%num_or_den
+            #    hists_to_plot = [mc_truth_fake_stack, mc_truth_fake_sys_hist, data_hist]
+            #    plot = mc_truth_fake_stack.plot
+            #    save_hist(plot_title, plot, channel_name, hists_to_plot)
 
             # Overlay of data before and after correction with MC truth
             # background stack
@@ -788,7 +900,7 @@ def save_and_write_hists(ff_hists_dict, hists):
             data_hist.color = r.kBlack
             data_corr_hist.color = r.kRed
             mc_truth_bkg_hist.color = r.kBlue - 1
-            plot_title = 'Data before and after background substraction'
+            plot_title = 'Data before and after background subtraction'
             plot_title += ' (%s)'%num_or_den
             hists_to_plot = [mc_truth_bkg_hist, data_hist, data_corr_hist]
             plot = data_hist.plot
@@ -821,21 +933,46 @@ def save_and_write_hists(ff_hists_dict, hists):
 
             # Overlay of data with stack of total MC truth background and total
             # MC truth fake with composition rescaling
-            if args.systematics:
-                stack = r.THStack("bkg_and_scaled_fake_mc","")
-                mc_truth_bkg_hist.color = r.kBlue - 1
-                mc_truth_fake_sys_hist.color = r.kGray
-                data_hist.color = r.kBlack
-                mc_truth_fake_sys_hist.displayname = "MC rescaled fake background"
-                stack.Add(mc_truth_fake_sys_hist)
-                stack.Add(mc_truth_bkg_hist)
-                plot_title = 'MC breakdown of scaled fake and non-fake backgrounds'
-                plot_title += ' (%s)'%num_or_den
-                hists_to_plot = [stack, data_hist]
-                plot = data_hist.plot
-                save_hist(plot_title, plot, channel_name, hists_to_plot)
+            #if args.systematics:
+            #    stack = r.THStack("bkg_and_scaled_fake_mc","")
+            #    mc_truth_bkg_hist.color = r.kBlue - 1
+            #    mc_truth_fake_sys_hist.color = r.kGray
+            #    data_hist.color = r.kBlack
+            #    mc_truth_fake_sys_hist.displayname = "MC rescaled fake background"
+            #    stack.Add(mc_truth_fake_sys_hist)
+            #    stack.Add(mc_truth_bkg_hist)
+            #    plot_title = 'MC breakdown of scaled fake and non-fake backgrounds'
+            #    plot_title += ' (%s)'%num_or_den
+            #    hists_to_plot = [stack, data_hist]
+            #    plot = data_hist.plot
+            #    save_hist(plot_title, plot, channel_name, hists_to_plot)
+
+def correct_up_and_dn_err(up, dn):
+    if up < 0 and dn >= 0:
+        up, dn = dn, up
+    elif up >= 0 and dn >= 0:
+        up = max(up, dn) #sqrt(up**2 + dn**2)
+        dn = 0
+    elif up < 0 and dn < 0:
+        up = 0
+        dn = min(up, dn) #-sqrt(up**2 + dn**2)
+
+    return up, dn
 
 def save_hist(title, plot, reg_name, hist_list):
+    
+    if plot.is3D:
+        var = plot.zvariable + ":" + plot.yvariable + ":" + plot.xvariable 
+    elif plot.is2D:
+        var = plot.yvariable + ":" + plot.xvariable
+    else:
+        var = plot.variable
+    suffix = "_" + plot.suffix if plot.suffix else ""
+    outname = reg_name+ '_' + var+ '_' + title + suffix + ".pdf"
+    outname = outname.replace(" ","_")
+    outname = sub(r'[:\-(){}[\]+]+','', outname)
+    
+    plot.setStackPads(outname)
     can = plot.pads.canvas
     can.cd()
     can.SetTitle(title)
@@ -873,14 +1010,14 @@ def save_hist(title, plot, reg_name, hist_list):
             elif hasattr(hist, 'is_total') and stack_flag:
                 hist.SetFillStyle(0)
                 hist.SetLineColor(hist.color)
-                leg_type = 'f'
+                leg_type = 'l'
             else:
                 hist.SetFillStyle(0)
                 hist.SetMarkerStyle(r.kFullCircle)
-                hist.SetMarkerSize(0)
+                hist.SetMarkerSize(1.5)
                 hist.SetMarkerColor(hist.color)
-                hist.SetLineColor(hist.color)
-                leg_type = 'l'
+                #hist.SetLineColor(hist.color)
+                leg_type = 'p'
             legend.AddEntry(hist, hist.displayname, leg_type)
 
     # Draw primitives to canvas
@@ -892,10 +1029,10 @@ def save_hist(title, plot, reg_name, hist_list):
             hist.Draw("HIST SAME")
         else:
             hist.Draw("pE1 same")
-            hist.Draw("HIST SAME")
+            #hist.Draw("HIST SAME")
 
     legend.Draw()
-    pu.draw_atlas_label('Internal','Higgs LFV', reg_name)
+    pu.draw_atlas_label(plot.atlas_status,plot.atlas_lumi, reg_name)
 
     # Finalize
     can.RedrawAxis()
@@ -904,17 +1041,7 @@ def save_hist(title, plot, reg_name, hist_list):
     can.Update()
 
     # Save
-    if plot.is3D:
-        var = plot.zvariable + ":" + plot.yvariable + ":" + plot.xvariable 
-    elif plot.is2D:
-        var = plot.yvariable + ":" + plot.xvariable
-    else:
-        var = plot.variable
-    suffix = "_" + plot.suffix if plot.suffix else ""
-    outname = reg_name+ '_' + var+ '_' + title + suffix + ".pdf"
-    outname = outname.replace(" ","_")
-    outname = sub(r'[:\-(){}[\]+]+','', outname)
-    save_path = os.path.join(plots_dir, args.dir_name, outname)
+    save_path = os.path.join(PLOT_DIR, args.dir_name, outname)
     save_path = os.path.normpath(save_path)
     can.SaveAs(save_path)
     axis.Delete()
@@ -951,10 +1078,6 @@ def reformat_axis(plot, axis, hist_list):
     max_mult = 1e4 if logy else 1.8
 
     # reformat the axis
-    #stack.SetMaximum(maxy)
-    #stack.SetMinimum(ymin)
-    #stack.Modified()
-
     axis.SetMaximum(max_mult*maxy)
     axis.SetMinimum(ymin)
 
@@ -967,26 +1090,10 @@ def build_hist(h_name, plot, sample, cut):
         hist = r.TH3D(h_name, "", plot.nxbins, plot.xbin_edges, plot.nybins, plot.ybin_edges, plot.nzbins, plot.zbin_edges)
         draw_cmd = "%s>>%s"%(plot.zvariable+":"+plot.yvariable+":"+plot.xvariable, hist.GetName())
         sample.tree.Draw(draw_cmd, cut, "goff")
-        if plot.rebin_xbins:
-            new_bins = array('d', plot.rebin_xbins)
-            hist = pu.make_rebinned_th3(hist, xbins=new_bins)
-        if plot.rebin_ybins:
-            new_bins = array('d', plot.rebin_ybins)
-            hist = pu.make_rebinned_th3(hist, ybins=new_bins)
-        if plot.rebin_zbins:
-            new_bins = array('d', plot.rebin_zbins)
-            hist = pu.make_rebinned_th3(hist, zbins=new_bins)
     elif plot.is2D:
         hist = r.TH2D(h_name, "", plot.nxbins, plot.xbin_edges, plot.nybins, plot.ybin_edges)
         draw_cmd = "%s>>%s"%(plot.yvariable+":"+plot.xvariable, hist.GetName())
         sample.tree.Draw(draw_cmd, cut, "goff")
-        if plot.rebin_xbins:
-            new_bins = array('d', plot.rebin_xbins)
-            hist = pu.make_rebinned_th2f(hist, xbins=new_bins)
-        if plot.rebin_ybins:
-            new_bins = array('d', plot.rebin_ybins)
-            hist = pu.make_rebinned_th2f(hist, ybins=new_bins)
-
     else:
         labels = ";%s;%s" % (plot.xlabel, plot.ylabel)
         hist = r.TH1D(h_name, labels, plot.nbins, plot.bin_edges)
@@ -994,12 +1101,6 @@ def build_hist(h_name, plot, sample, cut):
         hist.SetLineColor(sample.color)
         draw_cmd = "%s>>+%s"%(plot.variable, hist.GetName())
         sample.tree.Draw(draw_cmd, cut, "goff")
-
-        hist.SetMaximum(plot.ymax)
-        
-        if plot.rebin_bins:
-            new_bins = array('d', plot.rebin_bins)
-            hist = hist.Rebin(len(new_bins)-1, h_name, new_bins)
 
         if plot.add_overflow:
             pu.add_overflow_to_lastbin(hist)
@@ -1164,6 +1265,9 @@ if __name__ == '__main__':
         PLOTS = conf.PLOTS
         YIELD_TBL = conf.YIELD_TBL
         YIELD_TABLES = []
+        EVENT_LIST_DIR = conf.EVENT_LIST_DIR
+        YIELD_TBL_DIR = conf.YIELD_TBL_DIR
+        PLOT_DIR = conf.PLOT_DIR
         KEYS = KeyManager()
 
         check_for_consistency()

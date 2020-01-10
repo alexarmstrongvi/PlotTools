@@ -365,6 +365,8 @@ class Data(Sample):
 
 class DataBackground(Data) :
     def __init__(self, name = "", displayname = "", latexname="") :
+        if not displayname: displayname = name
+        if not latexname: latexname = displayname
         Data.__init__(self, name, displayname)
         self.isDataBkg = True
 

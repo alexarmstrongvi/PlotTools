@@ -297,7 +297,7 @@ class CutScan1D(HistBase):
             if zn == float('inf'):
                 zn = 0
             zn_sig.SetBinContent(xbin, zn)
-            print "TESTING :: sig_yld = %f, bkd_yld = %f, bkd_unc = %f, Zn = %f" % (sig_yld, bkd_yld, bkd_unc, zn)
+            #print "TESTING :: sig_yld = %f, bkd_yld = %f, bkd_unc = %f, Zn = %f" % (sig_yld, bkd_yld, bkd_unc, zn)
         maxy = zn_sig.GetMaximum()
         maxy = maxy + 0.2*abs(maxy)
         miny = zn_sig.GetMaximum()
@@ -539,8 +539,8 @@ def format_x_axis(hist):
     #xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
 
 class RatioHist1D(HistBase) :
-    ratio_ymax = 2.0
-    ratio_ymin = 0.0
+    ratio_ymax = 1.5
+    ratio_ymin = 0.5
 
     def __init__(self, plot, num, den, ymax = 0, ymin = 0):
         self.axis = None

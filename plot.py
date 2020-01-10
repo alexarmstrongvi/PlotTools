@@ -415,9 +415,9 @@ class Plot1D(PlotBase) :
         ratio_hists.errors.Draw("E2")
         ratio_hists.ratio.Draw("option same pz 0")
 
-        pu.draw_line(self.xmin, 1.5, self.xmax, 1.5, style = 3, width = 1)
+        pu.draw_line(self.xmin, 1.2, self.xmax, 1.2, style = 3, width = 1)
         pu.draw_line(self.xmin, 1.0, self.xmax, 1.0, style = 2, width = 1, color = r.kBlack)
-        pu.draw_line(self.xmin, 0.5, self.xmax, 0.5, style = 3, width = 1)
+        pu.draw_line(self.xmin, 0.8, self.xmax, 0.8, style = 3, width = 1)
 
         rcan.lower_pad.SetTicks()
         rcan.lower_pad.Update()
@@ -1097,12 +1097,31 @@ class Plot3D(PlotBase) :
         self.rebin_ybins = []
         self.rebin_zbins = []
 
-    def update(self, region, xvar, yvar, zvar):
-        self.region = region
-        self.xvariable = xvar
-        self.yvariable = yvar
-        self.zvariable = zvar
-        self.name = determine_name(region, xvar, yvar, zvar)
+    def update(self, 
+            region=None, 
+            xvar=None, 
+            yvar=None, 
+            zvar=None,
+            xbin_edges=None,
+            ybin_edges=None,
+            zbin_edges=None):
+        if region: self.region = region
+        if xvar: self.xvariable = xvar
+        if yvar: self.yvariable = yvar
+        if zvar: self.zvariable = zvar
+        self.name = determine_name(self.region, self.xvariable, self.yvariable, self.zvariable)
+        
+        if xbin_edges: self.xbin_edges = xbin_edges
+        if ybin_edges: self.ybin_edges = ybin_edges
+        if zbin_edges: self.zbin_edges = zbin_edges
+        if xbin_edges or ybin_edges or zbin_edges:
+            nxbins = len(self.xbin_edges) - 1
+            nybins = len(self.ybin_edges) - 1
+            nzbins = len(self.zbin_edges) - 1
+
+            self.nxbins, self.xbin_edges = determine_bins(self.xbin_edges, None, nxbins, self.xmin, self.xmax, self.xvariable)
+            self.nybins, self.ybin_edges = determine_bins(self.ybin_edges, None, nybins, self.ymin, self.ymax, self.yvariable)
+            self.nzbins, self.zbin_edges = determine_bins(self.zbin_edges, None, nzbins, self.zmin, self.zmax, self.zvariable)
 
     def determine_labels(self, xlabel, ylabel, zlabel):
         if self.xunits:
