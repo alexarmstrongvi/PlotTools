@@ -633,23 +633,31 @@ def reformat_axis(plot, axis, hists):
     if maxy <= 0:
         print "WARNING :: Max value of plot is <= 0"
     
-    # Set max and min
-    if plot.doLogY:
-        maxy = 10**(pu.get_order_of_mag(maxy))
-        if miny > 0:
-            miny = 10**(pu.get_order_of_mag(miny)-1)
-        else:
-            miny = 10**(pu.get_order_of_mag(maxy) - 4)
-    else:
-        maxy = maxy
-        miny = 0
-
-    # Get y-axis max multiplier to fit labels
-    max_mult = 1e2 if plot.doLogY else 1.8
+    plot_maxy, plot_miny = hist_yrange_to_plot_yrange(maxy, miny, plot.doLogY)
 
     # reformat the axis
-    axis.SetMaximum(max_mult*maxy)
-    axis.SetMinimum(miny)
+    axis.SetMaximum(plot_maxy)
+    axis.SetMinimum(plot_miny)
+
+def hist_yrange_to_plot_yrange(hist_max, hist_min, log_plot=False, big_legend=False):
+    if log_plot:
+        plot_max = 10**(pu.get_order_of_mag(hist_max))
+        plot_min = 1e-2
+        #if hist_min > 0:
+        #    plot_min = 10**(pu.get_order_of_mag(hist_min)-1)
+        #else:
+        #    plot_min = 10**(pu.get_order_of_mag(hist_max) - 4)
+    else:
+        plot_max = hist_max
+        plot_min = 0
+
+    # Get y-axis max multiplier to fit labels
+    if log_plot:
+        max_mult = 1e6 if big_legend else 1e5
+    else:
+        max_mult = 2.0 if big_legend else 1.8
+    
+    return plot_max * max_mult, plot_min
 
 def normalize_hist(hist):
     norm_factor = 1.0/hist.Integral() if hist.Integral() else 1
@@ -1060,38 +1068,25 @@ class DataMCStackHist1D(HistBase):
         if not self.mc_stack:
             return
         # Get maximum histogram y-value
-        if self.data:
-            maxy = max(pu.get_tgraph_max(self.data), self.mc_stack.GetMaximum())
-            miny = min(pu.get_tgraph_min(self.data), self.mc_stack.GetMinimum())
-        else:
-            maxy = self.mc_stack.GetMaximum()
-            miny = self.mc_stack.GetMinimum()
+        data_maxy = max(pu.get_tgraph_max(self.data), self.mc_stack.GetMaximum())
+        data_miny = min(pu.get_tgraph_min(self.data), self.mc_stack.GetMinimum())
+        mc_maxy = self.mc_stack.GetMaximum()
+        mc_miny = self.mc_stack.GetMinimum("nostack")
+
+        maxy = max(data_maxy, mc_maxy)
+        miny = min(data_miny, mc_miny)
+
         if maxy <= 0:
             print "WARNING :: Max value of plot is <= 0"
             return
 
-        # Get default y-axis max and min limits
-        if plot.doLogY:
-            maxy = 10**(pu.get_order_of_mag(maxy))
-            if miny > 0:
-                miny = 10**(pu.get_order_of_mag(miny)-1)
-            else:
-                miny = 10**(pu.get_order_of_mag(maxy) - 4)
-        else:
-            maxy = maxy
-            miny = 0
-
-        # Get y-axis max multiplier to fit labels
-        if plot.doLogY:
-            max_mult = 1e6 if self.signals else 1e5
-        else:
-            max_mult = 2.0 if self.signals else 1.8
+        plot_maxy, plot_miny = hist_yrange_to_plot_yrange(maxy, miny, plot.doLogY, bool(self.signals))
 
         # reformat the axis
-        self.mc_stack.SetMaximum(max_mult*maxy)
-        self.mc_stack.SetMinimum(miny)
-        self.axis.SetMaximum(max_mult*maxy)
-        self.axis.SetMinimum(miny)
+        self.mc_stack.SetMaximum(plot_maxy)
+        self.mc_stack.SetMinimum(plot_miny)
+        self.axis.SetMaximum(plot_maxy)
+        self.axis.SetMinimum(plot_miny)
 
     def arrange_histos_for_legend(self, histos) :
         '''
