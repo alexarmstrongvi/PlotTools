@@ -55,10 +55,8 @@ class PlotBase(object):
     def __init__(self):
         self.suffix = ""
     def save_plot(self, can, suffix = ""):
-        if suffix:
-            suffix = "_" + suffix
         if self.suffix:
-            suffix += "_" + self.suffix
+            suffix += self.suffix
         save_name = self.name + suffix + "." + self.output_format
         save_path = os.path.join(self.save_dir, save_name)
         save_path = os.path.normpath(save_path)
@@ -387,7 +385,7 @@ class Plot1D(PlotBase) :
         hists.leg_sig.Draw()
         pu.draw_atlas_label(self.atlas_status, self.atlas_lumi, reg_name)
 
-    def make_data_mc_stack_with_ratio_plot(self, reg_name, stack_hists, ratio_hists):
+    def make_data_mc_stack_with_ratio_plot(self, reg_name, stack_hists, ratio_hists, suffix=''):
         # Pads
         self.setRatioPads(self.name)
         rcan = self.pads #remove relableing
@@ -424,7 +422,7 @@ class Plot1D(PlotBase) :
 
         ############################################################################
         # Save the histogram
-        self.save_plot(rcan.canvas)
+        self.save_plot(rcan.canvas, suffix)
 
         # Clean up
         #self.pads.canvas.Clear() #TODO: check if this can be uncommented
@@ -451,7 +449,7 @@ class Plot1D(PlotBase) :
         
         ########################################################################
         # Save the histogram
-        self.save_plot(can)
+        self.save_plot(can, suffix)
 
     def make_overlay_with_ratio_plot(self, name, ratio_label, overlay_hist, ratio_hist, suffix=''):
         # Pads
@@ -507,7 +505,7 @@ class Plot1D(PlotBase) :
 
         ############################################################################
         # Save the histogram
-        self.save_plot(rcan.canvas)
+        self.save_plot(rcan.canvas, suffix)
 
         # Clean up
         #self.pads.canvas.Clear() #TODO: check if this can be uncommented
