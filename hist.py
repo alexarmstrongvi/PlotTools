@@ -242,6 +242,44 @@ class CutScan1D(HistBase):
             for ibin in range(eff_hist.GetNbinsX()+1):
                 bin_val = eff_hist.GetBinContent(ibin)
                 eff_hist.SetBinContent(ibin, 1-bin_val)
+        else:
+            # Print cut values for specific efficiences
+            nbins = eff_hist.GetNbinsX()
+            for eff in [0.90, 0.95, 0.99]:
+                if eff < 0 or 1 < eff: 
+                    print "ERROR :: %f efficiency makes no sense. Try again" % (eff)
+                if xcut_is_max:
+                    ibin_up = eff_hist.FindFirstBinAbove(eff)
+                    ibin_dn = ibin_up - 1
+                    stating_eff = eff_hist.GetBinContent(nbins - 1)
+                    ending_eff = eff_hist.GetBinContent(1)
+                else:
+                    ibin_dn = eff_hist.FindLastBinAbove(eff)
+                    ibin_up = ibin_dn + 1
+                    ending_eff = eff_hist.GetBinContent(nbins - 1)
+                    stating_eff = eff_hist.GetBinContent(1)
+
+                if ibin_up <= 0:
+                    print "INFO :: Signal efficiency begins at %f. Expand hist range to find %f efficiency cut" % (starting_eff, eff)
+                    continue
+                elif ibin_up == 0 or ibin_dn == nbins-1:
+                    print "INFO :: Signal efficiency ends at %f. Decrease bin width to find %f efficiency cut" % (ending_eff, eff)
+                    continue
+                cut_dn = eff_hist.GetBinLowEdge(ibin_dn)
+                cut_up = eff_hist.GetBinLowEdge(ibin_up) + eff_hist.GetBinWidth(ibin_up)
+                
+                y_up = eff_hist.GetBinContent(ibin_up)
+                y_dn = eff_hist.GetBinContent(ibin_dn)
+                x_up = eff_hist.GetBinCenter(ibin_up)
+                x_dn = eff_hist.GetBinCenter(ibin_dn)
+                m = (y_up - y_dn) / (x_up - x_dn)
+                cut_guess = (eff - y_dn) / m + x_dn 
+                print "INFO :: %f efficiency achieved with cut value between [%f,%f]. Most likely %f" % (eff, cut_dn, cut_up, cut_guess)
+            
+            # Print cut values for specific efficiences
+            for cut in [3.0, 5.0]:
+                eff = eff_hist.GetBinContent(eff_hist.FindBin(cut))
+                print "INFO :: Cut of %f leads to %f efficiency" % (cut, eff)
 
         return eff_hist
 
@@ -539,7 +577,7 @@ def format_x_axis(hist):
     #xax.SetTitleOffset(0.85 * xax.GetTitleOffset())
 
 class RatioHist1D(HistBase) :
-    ratio_ymax = 1.5
+    ratio_ymax = 2.0
     ratio_ymin = 0.5
 
     def __init__(self, plot, num, den, ymax = 0, ymin = 0):

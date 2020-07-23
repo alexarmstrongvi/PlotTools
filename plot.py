@@ -413,6 +413,7 @@ class Plot1D(PlotBase) :
         ratio_hists.errors.Draw("E2")
         ratio_hists.ratio.Draw("option same pz 0")
 
+        pu.draw_line(self.xmin, 1.5, self.xmax, 1.5, style = 3, width = 1)
         pu.draw_line(self.xmin, 1.2, self.xmax, 1.2, style = 3, width = 1)
         pu.draw_line(self.xmin, 1.0, self.xmax, 1.0, style = 2, width = 1, color = r.kBlack)
         pu.draw_line(self.xmin, 0.8, self.xmax, 0.8, style = 3, width = 1)
@@ -534,7 +535,7 @@ class Plot1D(PlotBase) :
 
         self.save_plot(can, suffix)
 
-    def make_cutscan1d_plot(self, hists, reg_name, roc_curve=False):
+    def make_cutscan1d_plot(self, hists, reg_name, suffix="", roc_curve=False):
         # Get Canvas
         self.setCutScanPads1D(self.name)
         pads = self.pads
@@ -588,7 +589,8 @@ class Plot1D(PlotBase) :
             hists.zn_sig.Draw("HIST SAME")
 
         # Save the histogram
-        self.save_plot(pads.canvas, suffix="cutScan")
+        suffix += "_cutScan"
+        self.save_plot(pads.canvas, suffix)
 
     def make_stack_plot(self, reg_name, hists, suffix=''):
         if not hists.successful_setup():

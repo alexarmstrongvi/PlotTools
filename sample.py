@@ -93,6 +93,7 @@ class Sample :
 
         # Select out flat ntuples found in DSID list
         chosen_ntuples = []
+
         for dsid in dsid_list:
             matched_files = []
             for fname in flat_ntuples:
@@ -334,7 +335,7 @@ class Sample :
 
     def check_for_duplicates(self, ifile):
         tree = ifile.Get(self.input_file_treename)
-        events = [x.event_number for x in tree]
+        events = [x.eventNumber for x in tree]
         
         # Get duplicates events
         seen = set()
