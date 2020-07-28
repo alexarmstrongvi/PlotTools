@@ -75,8 +75,8 @@ class Plot1D(PlotBase) :
     norm_ymin = 0
     norm_ymax = 1.5
 
-    logy_norm_min = 1e-4
-    logy_norm_max = 1e2
+    logy_norm_min = 1e-6
+    logy_norm_max = 1e3
 
     auto_set_ylimits = True
     doLogY = False

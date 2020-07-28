@@ -1118,7 +1118,11 @@ class DataMCStackHist1D(HistBase):
             print "WARNING :: Max value of plot is <= 0"
             return
 
-        plot_maxy, plot_miny = hist_yrange_to_plot_yrange(maxy, miny, plot.doLogY, bool(self.signals))
+        if plot.doNorm:
+            plot_maxy = plot.logy_norm_max
+            plot_miny = plot.logy_norm_min
+        else:
+            plot_maxy, plot_miny = hist_yrange_to_plot_yrange(maxy, miny, plot.doLogY, bool(self.signals))
 
         # reformat the axis
         self.mc_stack.SetMaximum(plot_maxy)
